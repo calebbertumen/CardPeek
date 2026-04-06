@@ -1,0 +1,403 @@
+// CardPeek — Pokémon MVP with room to generalize (TCG) later via naming / future fields.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ConditionBucket {
+  raw_nm
+  raw_lp
+  raw_mp_hp
+  psa_8
+  psa_9
+  psa_10
+}
+
+enum ScrapeJobStatus {
+  pending
+  running
+  completed
+  failed
+}
+
+/// Distinguishes sold-comps jobs from watchlist active-listing jobs (never mix per-user work).
+enum ScrapeJobKind {
+  sold
+  active
+}
+
+enum AlertTargetType {
+  below_price
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String?
+  stripeCustomerId String? @unique
+  createdAt     DateTime  @default(now())
+
+  accounts      Account[]
+  sessions      Session[]
+  savedSearches SavedSearch[]
+  subscriptions Subscription[]
+  watchlist            WatchlistItem[]
+  priceAlerts          PriceAlert[]
+  searchUsage          SearchUsage[]
+  watchlistAlertEvents WatchlistAlertHistory[]
+  starterHiddenLiveUsage StarterHiddenLiveUsage[]
+}
+
+/// Internal counter: Starter hidden live market lookups per UTC day (not user-visible).
+model StarterHiddenLiveUsage {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dayKey    String
+  fetches   Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, dayKey])
+  @@index([userId, dayKey])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Card {
+  id                String   @id @default(cuid())
+  name              String
+  setName           String?
+  cardNumber        String?
+  pokemonTcgApiId   String   @unique
+  imageSmall        String
+  imageLarge        String
+  normalizedCardKey String   @unique
+
+  caches        CardCache[]
+  savedSearches SavedSearch[]
+  watchlistedBy WatchlistItem[]
+  alerts        PriceAlert[]
+  scrapeJobs    ScrapeJob[]
+  historyPoints PriceHistoryPoint[]
+  cardVariants  CardVariant[]
+}
+
+/// Canonical identity for ONE scrape unit (shared across all users watching this variant).
+model CardVariant {
+  id               String          @id @default(cuid())
+  canonicalKey     String          @unique
+  displayName      String
+  setName          String?
+  cardNumber       String?
+  variantLabel     String?
+  gradingCompany   String?
+  gradeLabel       String?
+  conditionBucket  ConditionBucket
+  cardId           String
+  card             Card            @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  cardCaches       CardCache[]
+  activeSnapshot   ActiveListingSnapshot?
+  watchlistItems   WatchlistItem[]
+  alertHistory     WatchlistAlertHistory[]
+
+  @@index([cardId, conditionBucket])
+}
+
+/// Sold comps snapshot (recent sales for pricing). TTL via `lastScrapedAt`; ties to `CardVariant` for shared identity.
+model CardCache {
+  id              String          @id @default(cuid())
+  cardId          String
+  card            Card            @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  cardVariantId   String?
+  cardVariant     CardVariant?    @relation(fields: [cardVariantId], references: [id], onDelete: SetNull)
+  conditionBucket ConditionBucket
+  cacheKey        String          @unique
+  avgPrice        Decimal         @db.Decimal(12, 2)
+  medianPrice     Decimal         @db.Decimal(12, 2)
+  lowPrice        Decimal         @db.Decimal(12, 2)
+  highPrice       Decimal         @db.Decimal(12, 2)
+  listingsCount   Int
+  lastScrapedAt   DateTime
+  lastReturnedAt  DateTime?
+
+  listings      CardCacheListing[]
+  savedSearches SavedSearch[]
+
+  @@index([cardId, conditionBucket])
+  @@index([lastScrapedAt])
+  @@index([cardVariantId])
+}
+
+/// Latest active (e.g. BIN) listings for a variant — watchlist alert input only; independent TTL from sold cache.
+model ActiveListingSnapshot {
+  id              String       @id @default(cuid())
+  cardVariantId   String       @unique
+  cardVariant     CardVariant  @relation(fields: [cardVariantId], references: [id], onDelete: Cascade)
+  lastScrapedAt   DateTime
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  listings        ActiveListingRow[]
+
+  @@index([lastScrapedAt])
+}
+
+model ActiveListingRow {
+  id                      String                 @id @default(cuid())
+  activeListingSnapshotId String
+  snapshot                ActiveListingSnapshot  @relation(fields: [activeListingSnapshotId], references: [id], onDelete: Cascade)
+  title                   String
+  price                   Decimal                @db.Decimal(12, 2)
+  shippingPrice           Decimal?               @db.Decimal(12, 2)
+  totalPrice              Decimal                @db.Decimal(12, 2)
+  currency                String                 @default("USD")
+  listingUrl              String
+  itemId                  String?
+  sellerLabel             String?
+  isBuyItNow              Boolean                @default(true)
+  rawPayload              Json?
+  position                Int
+
+  @@index([activeListingSnapshotId])
+}
+
+/// Dedupe: one alert fired per user per listing item per variant.
+model WatchlistAlertHistory {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  watchlistItemId String
+  watchlistItem   WatchlistItem @relation(fields: [watchlistItemId], references: [id], onDelete: Cascade)
+  cardVariantId   String
+  cardVariant     CardVariant @relation(fields: [cardVariantId], references: [id], onDelete: Cascade)
+  listingItemId   String
+  totalPriceSeen  Decimal  @db.Decimal(12, 2)
+  alertedAt       DateTime @default(now())
+
+  @@unique([userId, cardVariantId, listingItemId])
+  @@index([userId, alertedAt])
+  @@index([cardVariantId])
+}
+
+/// Prevents duplicate concurrent scrapes for the same logical target (cost guardrail).
+model ScrapeLock {
+  id        String   @id @default(cuid())
+  scope     String
+  lockKey   String
+  lockedAt  DateTime @default(now())
+  expiresAt DateTime
+
+  @@unique([scope, lockKey])
+  @@index([expiresAt])
+}
+
+model CardCacheListing {
+  id              String    @id @default(cuid())
+  cardCacheId     String
+  cardCache       CardCache @relation(fields: [cardCacheId], references: [id], onDelete: Cascade)
+  title           String
+  source          String    @default("unknown")
+  soldPrice       Decimal   @db.Decimal(12, 2)
+  soldDate        DateTime
+  listingUrl      String
+  itemId          String?
+  imageUrl        String?
+  rawPayload      Json?
+  conditionLabel  String?
+  gradeLabel      String?
+  rawOrGraded     String?
+  position        Int
+
+  @@index([cardCacheId])
+}
+
+model AnonymousUsage {
+  id              String   @id @default(cuid())
+  anonymousId     String   @unique
+  searchesCount   Int      @default(0)
+  windowStartedAt DateTime @default(now())
+}
+
+model PreviewUsage {
+  id          String   @id @default(cuid())
+  anonymousId String   @unique
+  searches    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SearchUsage {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anonymousId String?
+  dayKey      String
+  searches    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([dayKey, userId])
+  @@unique([dayKey, anonymousId])
+  @@index([userId, dayKey])
+  @@index([anonymousId, dayKey])
+}
+
+model SavedSearch {
+  id              String          @id @default(cuid())
+  userId          String
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cardId          String
+  card            Card            @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  conditionBucket ConditionBucket
+  cardCacheId     String?
+  cardCache       CardCache?      @relation(fields: [cardCacheId], references: [id], onDelete: SetNull)
+  createdAt       DateTime        @default(now())
+
+  @@index([userId])
+}
+
+model WatchlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cardId    String
+  card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  conditionBucket ConditionBucket @default(raw_nm)
+  cardVariantId String?
+  cardVariant   CardVariant? @relation(fields: [cardVariantId], references: [id], onDelete: SetNull)
+  /** Alert when any active listing total is at or below this (watchlist-specific; optional). */
+  targetPrice   Decimal? @db.Decimal(12, 2)
+  alertEnabled  Boolean  @default(true)
+  nextActiveCheckAfter DateTime?
+  lastActiveCheckAt    DateTime?
+  createdAt DateTime @default(now())
+
+  alertHistory WatchlistAlertHistory[]
+
+  @@unique([userId, cardId, conditionBucket])
+  @@index([userId, createdAt])
+  @@index([cardId])
+  @@index([cardVariantId])
+  @@index([nextActiveCheckAfter])
+}
+
+model PriceAlert {
+  id              String          @id @default(cuid())
+  userId          String
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cardId          String
+  card            Card            @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  conditionBucket ConditionBucket?
+  targetType      AlertTargetType @default(below_price)
+  targetPrice     Decimal         @db.Decimal(12, 2)
+  isActive        Boolean         @default(true)
+  lastTriggeredAt DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([userId, isActive])
+  @@index([cardId, isActive])
+}
+
+model NotificationEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  payload   Json
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model PriceHistoryPoint {
+  id         String   @id @default(cuid())
+  cardId     String
+  card       Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  periodDays Int
+  price      Decimal  @db.Decimal(12, 2)
+  recordedAt DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([cardId, periodDays, recordedAt])
+}
+
+model ScrapeJob {
+  id              String          @id @default(cuid())
+  cardId          String
+  card            Card            @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  conditionBucket ConditionBucket
+  cacheKey        String
+  kind            ScrapeJobKind   @default(sold)
+  status          ScrapeJobStatus @default(pending)
+  requestedByUserId String?
+  priority        Int             @default(0)
+  error           String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  completedAt     DateTime?
+
+  @@index([cacheKey, status])
+  @@index([status, priority, createdAt])
+  @@index([cardId, conditionBucket])
+  @@index([kind, status, priority, createdAt])
+}
+
+/// Placeholder for future Stripe subscriptions — not wired to payments in MVP.
+model Subscription {
+  id                   String    @id @default(cuid())
+  userId               String
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?   @unique
+  status               String    @default("inactive")
+  planId               String?
+  currentPeriodEnd     DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@index([userId])
+}

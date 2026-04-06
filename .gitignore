@@ -1,4 +1,4 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# See https://help.github.com/articles/ignoring-files/
 
 # dependencies
 /node_modules
@@ -19,14 +19,25 @@
 # misc
 .DS_Store
 *.pem
+Thumbs.db
 
 # debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 
-# local env files
-.env*.local
+# Environment & secrets — copy .env.example → .env locally; never commit real values
+.env
+.env.*
+!.env.example
+
+# Secret / credential files (common tooling)
+*credentials*.json
+*.pem.key
+
+# direnv (often exports DATABASE_URL and other secrets)
+.envrc
 
 # vercel
 .vercel
@@ -34,3 +45,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# tooling caches
+.turbo
+.cache
+
+# IDE / OS (local paths or tokens in some setups)
+.idea/
