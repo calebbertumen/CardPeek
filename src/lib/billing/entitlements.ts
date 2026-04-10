@@ -1,5 +1,4 @@
 import type { AccessTier } from "@/lib/billing/access";
-import { STARTER_DAILY_SEARCH_LIMIT } from "@/lib/billing/product-config";
 
 export type Entitlements = {
   tier: AccessTier;
@@ -30,8 +29,9 @@ export const ENTITLEMENTS_BY_TIER: Record<AccessTier, Entitlements> = {
   },
   starter: {
     tier: "starter",
-    searchesPerDay: STARTER_DAILY_SEARCH_LIMIT,
-    searchesPerDaySoftCap: STARTER_DAILY_SEARCH_LIMIT,
+    /** Cache-backed searches are unlimited; `enforceAndRecordDailySearch` skips Starter. Fresh scrapes: 3 lifetime (see `product-config` + Prisma). */
+    searchesPerDay: 10_000,
+    searchesPerDaySoftCap: 10_000,
     previewSearchesTotalLimit: null,
     recentSalesVisibleCount: 0,
     canTriggerRefresh: false,

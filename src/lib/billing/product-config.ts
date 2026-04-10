@@ -3,7 +3,9 @@
  * Adjust values here; avoid scattering magic numbers across UI and services.
  */
 
-export const STARTER_DAILY_SEARCH_LIMIT = 1;
+/** Default fresh Apify runs for Starter; mirrored on `User.freeLifetimeUpdatedLookupsLimit` in Prisma. */
+export const STARTER_LIFETIME_FRESH_SCRAPE_LIMIT = 3;
+
 export const COLLECTOR_PRICE_MONTHLY_USD = 9.99;
 
 function envNumber(name: string, fallback: number): number {

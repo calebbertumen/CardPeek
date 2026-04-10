@@ -97,7 +97,8 @@ export async function searchCardAction(
           message: "Preview limit reached. Create a free account to keep exploring CardPeek.",
         };
       }
-    } else {
+    } else if (tier === "collector") {
+      // Starter: unlimited cache searches; only lifetime fresh-scrape credits apply (see `fresh-scrape-usage.service`).
       const gate = await enforceAndRecordDailySearch({
         entitlements,
         userId: session?.user?.id ?? null,
@@ -108,10 +109,7 @@ export async function searchCardAction(
           ok: false,
           code: "LIMIT",
           tier,
-          message:
-            tier === "starter"
-              ? `You’ve reached your ${gate.limit} searches for today on Starter. Upgrade to Collector for a higher search allowance and priority access to fresher market data.`
-              : `You’ve reached today’s search limit (${gate.limit.toLocaleString()} searches). Please try again tomorrow.`,
+          message: `You’ve reached today’s search limit (${gate.limit.toLocaleString()} searches). Please try again tomorrow.`,
         };
       }
     }
