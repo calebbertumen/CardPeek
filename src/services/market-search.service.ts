@@ -219,6 +219,18 @@ export async function searchCardMarketData(input: {
         isRefreshing,
       };
     } else if (tier === "starter" && userId) {
+      // Run the worker before re-checking entitlements: queueing a refresh reserves a credit, so
+      // `remaining` can be 0 until the job consumes or refunds. Otherwise we'd return FREE_LIFETIME_SCRAPE_LIMIT
+      // without ever running the worker — leaving `ScrapeJob` pending and `freeLifetimeUpdatedLookupsReserved` stuck.
+      if (isRefreshing) {
+        await processPendingScrapeJobs({ limit: 1 });
+        await waitForFreshSoldCache({ cacheKey, ttlMs });
+        existing = await prisma.cardCache.findUnique({
+          where: { cacheKey },
+          include: { listings: true },
+        });
+      }
+
       const ent = await getFreshScrapeEntitlementForUser({ tier, userId });
       const counts =
         ent.limit != null && ent.used != null && ent.remaining != null
@@ -243,14 +255,6 @@ export async function searchCardMarketData(input: {
         };
       }
 
-      if (isRefreshing) {
-        await processPendingScrapeJobs({ limit: 1 });
-        await waitForFreshSoldCache({ cacheKey, ttlMs });
-        existing = await prisma.cardCache.findUnique({
-          where: { cacheKey },
-          include: { listings: true },
-        });
-      }
       if (!existing) {
         return {
           kind: "no_data",

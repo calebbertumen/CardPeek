@@ -237,15 +237,15 @@ export async function processPendingScrapeJobs(input?: { limit?: number }): Prom
       completed += 1;
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unknown error";
+      if (next.requestedByUserId) {
+        await refundReservedFreeUpdatedLookupCredit(next.requestedByUserId);
+      }
+
       await prisma.scrapeJob.update({
         where: { id: next.id },
         data: { status: "failed", completedAt: new Date(), error: msg.slice(0, 500) },
       });
       failed += 1;
-
-      if (next.requestedByUserId) {
-        await refundReservedFreeUpdatedLookupCredit(next.requestedByUserId);
-      }
 
       await prisma.cardCache.updateMany({
         where: { cacheKey: next.cacheKey },
