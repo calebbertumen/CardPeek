@@ -5,6 +5,9 @@ import { SearchExperience } from "@/components/search/search-experience";
 import { auth } from "@/lib/auth";
 import { getUserPlanId } from "@/lib/billing/get-user-plan";
 
+/** Inline Apify sold scrape + poll can exceed the default serverless limit; required on Vercel for slow/queued runs. */
+export const maxDuration = 300;
+
 export const metadata: Metadata = {
   title: "Search",
   description: "Look up a Pokémon card and view recent sold listings with pricing context.",

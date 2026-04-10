@@ -5,8 +5,10 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  /// Used for `prisma db push` / migrations when `DATABASE_URL` points at a pooler (e.g. Supabase transaction mode).
+  directUrl = env("DIRECT_URL")
 }
 
 enum ConditionBucket {

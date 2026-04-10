@@ -455,8 +455,10 @@ async function fetchEbaySoldListingsDataset(
   const runJson = (await runRes.json()) as { data: ApifyRun };
   let run = runJson.data;
 
-  // `waitForFinish` can return before the actor finishes (e.g. 30s client cap vs 40s run) — dataset may be empty until SUCCEEDED.
-  const pollUntil = Date.now() + Math.max(120_000, waitSec * 1000);
+  // `waitForFinish` can return while status is still RUNNING (Apify limit vs queue + actor runtime). Keep polling long
+  // enough that a run that succeeds in the Apify UI still has time to reach SUCCEEDED here (see APIFY_RUN_TIMEOUT).
+  const pollBudgetMs = Math.max(300_000, waitSec * 1000 + 120_000);
+  const pollUntil = Date.now() + pollBudgetMs;
   if (run.status !== "SUCCEEDED") {
     run = await waitForRunSucceededOrThrow(run, pollUntil);
   }
