@@ -13,6 +13,7 @@ import { getTierEntitlements } from "@/lib/billing/entitlements";
 import { searchCardMarketData } from "@/services/market-search.service";
 import { enforceAndRecordDailySearch } from "@/services/search-usage.service";
 import { enforceAndRecordPreviewSearch } from "@/services/preview-usage.service";
+import { releaseOrphanedStarterReservation } from "@/services/fresh-scrape-usage.service";
 import type { ConditionBucket } from "@prisma/client";
 
 /** Run the same search as the form when the user lands with `?name=…` query (e.g. from the home page). */
@@ -113,6 +114,10 @@ export async function searchCardAction(
         };
       }
     }
+  }
+
+  if (tier === "starter" && session?.user?.id) {
+    await releaseOrphanedStarterReservation(session.user.id);
   }
 
   try {

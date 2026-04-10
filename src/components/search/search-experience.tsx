@@ -135,11 +135,17 @@ export function SearchExperience({ initialFormState, formDefaults, viewerPlanId 
                   state.code === "LIMIT" ? (
                     <div className="mt-4 rounded-xl border border-border/80 bg-surface-alt/35 px-4 py-4 text-sm">
                       <p className="font-medium text-foreground">
-                        {state.message.includes("Preview limit") ? "Preview limit reached" : "Daily search limit reached"}
+                        {state.message.includes("Preview limit")
+                          ? "Preview limit reached"
+                          : state.message.includes("lifetime") || state.message.includes("fresh data")
+                            ? "Fresh data limit reached"
+                            : "Daily search limit reached"}
                       </p>
                       <p className="mt-1 text-sm text-muted-foreground">
                         {state.message.includes("Preview limit")
                           ? "Create a free account to keep exploring card prices and recent market data."
+                            : state.message.includes("lifetime") || state.message.includes("fresh data")
+                              ? state.message
                             : state.tier === "collector"
                             ? "Collector includes unlimited searches. You can try again tomorrow."
                             : "Starter includes limited searches. Upgrade to Collector to unlock sold listing details."}

@@ -15,6 +15,65 @@ function storeRawPayload(): boolean {
   return process.env.SCRAPING_STORE_RAW_PAYLOAD === "true";
 }
 
+/** Pending jobs older than this never got a worker claim — release Starter reservations. */
+const STALE_PENDING_MS = 30 * 60 * 1000;
+/** Running jobs stuck (e.g. serverless timeout mid-scrape) — refund so credits aren’t held forever. */
+const STALE_RUNNING_MS = 45 * 60 * 1000;
+
+async function failStalePendingSoldJobs(): Promise<void> {
+  const cutoff = new Date(Date.now() - STALE_PENDING_MS);
+  const stale = await prisma.scrapeJob.findMany({
+    where: {
+      kind: "sold",
+      status: "pending",
+      createdAt: { lt: cutoff },
+    },
+    select: { id: true, requestedByUserId: true },
+  });
+  for (const job of stale) {
+    await prisma.scrapeJob.update({
+      where: { id: job.id },
+      data: {
+        status: "failed",
+        completedAt: new Date(),
+        error: "STALE_PENDING_JOB",
+      },
+    });
+    if (job.requestedByUserId) {
+      await refundReservedFreeUpdatedLookupCredit(job.requestedByUserId);
+    }
+  }
+}
+
+async function failStaleRunningSoldJobs(): Promise<void> {
+  const cutoff = new Date(Date.now() - STALE_RUNNING_MS);
+  const stale = await prisma.scrapeJob.findMany({
+    where: {
+      kind: "sold",
+      status: "running",
+      updatedAt: { lt: cutoff },
+    },
+    select: { id: true, requestedByUserId: true, cacheKey: true },
+  });
+  for (const job of stale) {
+    await prisma.scrapeJob.update({
+      where: { id: job.id },
+      data: {
+        status: "failed",
+        completedAt: new Date(),
+        error: "STALE_RUNNING_JOB",
+      },
+    });
+    if (job.requestedByUserId) {
+      await refundReservedFreeUpdatedLookupCredit(job.requestedByUserId);
+    }
+    await prisma.cardCache.updateMany({
+      where: { cacheKey: job.cacheKey },
+      data: { lastScrapeError: "STALE_RUNNING_JOB" },
+    });
+  }
+}
+
 export async function processPendingScrapeJobs(input?: { limit?: number }): Promise<{
   processed: number;
   completed: number;
@@ -24,6 +83,9 @@ export async function processPendingScrapeJobs(input?: { limit?: number }): Prom
   let processed = 0;
   let completed = 0;
   let failed = 0;
+
+  await failStalePendingSoldJobs();
+  await failStaleRunningSoldJobs();
 
   for (let i = 0; i < limit; i += 1) {
     const next = await prisma.scrapeJob.findFirst({
@@ -163,14 +225,14 @@ export async function processPendingScrapeJobs(input?: { limit?: number }): Prom
         skipDuplicates: false,
       });
 
+      if (next.requestedByUserId) {
+        await consumeReservedFreeUpdatedLookupCredit(next.requestedByUserId);
+      }
+
       await prisma.scrapeJob.update({
         where: { id: next.id },
         data: { status: "completed", completedAt: new Date(), error: null },
       });
-
-      if (next.requestedByUserId) {
-        await consumeReservedFreeUpdatedLookupCredit(next.requestedByUserId);
-      }
 
       completed += 1;
     } catch (e) {

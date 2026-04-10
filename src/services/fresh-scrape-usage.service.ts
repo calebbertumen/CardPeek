@@ -91,6 +91,29 @@ export async function refundReservedFreeUpdatedLookupCredit(userId: string): Pro
 }
 
 /**
+ * If Apify/Vercel died after reserving a credit but no sold job is pending or running, clear the orphan
+ * reservation so the user regains that lifetime credit (used+reserved must stay ≤ limit).
+ */
+export async function releaseOrphanedStarterReservation(userId: string): Promise<void> {
+  const inFlight = await prisma.scrapeJob.count({
+    where: {
+      requestedByUserId: userId,
+      kind: "sold",
+      status: { in: ["pending", "running"] },
+    },
+  });
+  if (inFlight > 0) return;
+
+  await prisma.$executeRaw`
+    UPDATE "User"
+    SET "freeLifetimeUpdatedLookupsReserved" = 0
+    WHERE "id" = ${userId}
+      AND "collectorTierActive" = false
+      AND "freeLifetimeUpdatedLookupsReserved" > 0
+  `;
+}
+
+/**
  * Starter-only: queue a fresh scrape job and reserve exactly one lifetime credit iff this call actually created a job.
  * This ensures:
  * - cache hits don't consume credits (no queue)
