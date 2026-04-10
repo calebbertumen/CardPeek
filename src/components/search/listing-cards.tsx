@@ -140,7 +140,7 @@ export function ListingCards({ listings, tier, listingsCount, ebaySoldSearchUrl 
           ))
         : null}
 
-      {hasAnySales && ebaySoldSearchUrl ? (
+      {hasAnySales && ebaySoldSearchUrl && tier === "collector" ? (
         <li className="pt-1">
           <Button variant="outline" className="w-full rounded-full sm:w-auto" asChild>
             <a href={ebaySoldSearchUrl} target="_blank" rel="noopener noreferrer">
