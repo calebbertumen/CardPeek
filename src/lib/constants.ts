@@ -14,7 +14,6 @@ export function isAnonymousSearchLimitDisabled(): boolean {
   return false;
 }
 
-/** Sold comps cache TTL — do not rescrape while fresh */
-export const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+/** Sold comps cache TTL is adaptive per normalized card key — see `getCardCachePolicy`. */
 
 export const ANONYMOUS_COOKIE = "cardpeek_aid";

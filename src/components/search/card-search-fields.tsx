@@ -115,24 +115,35 @@ export function CardSearchFields({
               </div>
             ) : null}
           </div>
-          <Select
-            value={condition}
-            onValueChange={(v) => {
-              if (v) setCondition(v);
-            }}
-            disabled={viewerPlanId !== "collector"}
-          >
-            <SelectTrigger id={pid("condition-select")} className="h-11 w-full min-w-0 max-w-full">
-              <SelectValue placeholder="Condition" />
-            </SelectTrigger>
-            <SelectContent>
-              {CONDITION_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {viewerPlanId === "collector" ? (
+            <Select
+              value={condition}
+              onValueChange={(v) => {
+                if (v) setCondition(v);
+              }}
+            >
+              <SelectTrigger id={pid("condition-select")} className="h-11 w-full min-w-0 max-w-full">
+                <SelectValue placeholder="Condition" />
+              </SelectTrigger>
+              <SelectContent>
+                {CONDITION_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <div
+              id={pid("condition-select")}
+              className="flex h-11 w-full min-w-0 max-w-full items-center rounded-lg border border-border bg-surface-alt px-2.5 text-sm text-foreground select-none"
+              title="Collector unlocks condition filters"
+            >
+              <span className="truncate">
+                {CONDITION_OPTIONS.find((o) => o.value === condition)?.label ?? condition}
+              </span>
+            </div>
+          )}
         </div>
         <div className="flex shrink-0 items-end justify-center">{actionsSlot}</div>
       </div>

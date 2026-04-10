@@ -1,11 +1,13 @@
 import type { Card, CardCache, CardCacheListing, ConditionBucket } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { CACHE_TTL_MS } from "@/lib/constants";
+import { getCardCachePolicy, cachePolicyTtlMs } from "@/lib/cache/card-cache-policy";
+import { getCardSearchStats, recordCardSearchEvent } from "@/services/card-search-activity.service";
 import { buildCacheKey, normalizeCardKeyParts } from "@/lib/normalize";
 import { fetchPokemonCardBestMatch } from "@/services/pokemon-tcg/pokemon-tcg.service";
 import { getSoldCompsProvider } from "@/services/sold-comps";
 import type { SoldCompListingDTO } from "@/services/sold-comps/types";
 import { Prisma } from "@prisma/client";
+import { computeDisplayedAveragePrice } from "@/lib/pricing/compute-displayed-average-price";
 
 export type CardSearchResult = {
   card: Pick<Card, "name" | "setName" | "cardNumber" | "imageLarge" | "imageSmall" | "normalizedCardKey">;
@@ -24,6 +26,7 @@ export type CardSearchResult = {
     soldPrice: number;
     soldDate: Date;
     listingUrl: string;
+    imageUrl: string | null;
     conditionLabel: string | null;
     gradeLabel?: string | null;
     rawOrGraded?: string | null;
@@ -37,14 +40,15 @@ function computeStats(prices: number[]): {
   low: number;
   high: number;
 } {
-  if (prices.length === 0) {
+  const valid = prices.filter((p) => Number.isFinite(p) && p > 0);
+  if (valid.length === 0) {
     return { avg: 0, median: 0, low: 0, high: 0 };
   }
-  const sorted = [...prices].sort((a, b) => a - b);
+  const sorted = [...valid].sort((a, b) => a - b);
   const low = sorted[0]!;
   const high = sorted[sorted.length - 1]!;
-  const sum = prices.reduce((a, b) => a + b, 0);
-  const avg = sum / prices.length;
+  const avgResult = computeDisplayedAveragePrice(valid);
+  const avg = avgResult.displayedAveragePrice ?? 0;
   const mid = Math.floor(sorted.length / 2);
   const median =
     sorted.length % 2 === 0 ? (sorted[mid - 1]! + sorted[mid]!) / 2 : sorted[mid]!;
@@ -86,6 +90,7 @@ function mapCacheToResult(
         soldPrice: Number(l.soldPrice),
         soldDate: l.soldDate,
         listingUrl: l.listingUrl,
+        imageUrl: l.imageUrl,
         conditionLabel: l.conditionLabel,
         gradeLabel: l.gradeLabel,
         rawOrGraded: l.rawOrGraded,
@@ -141,6 +146,7 @@ export function listingsFromDtos(rows: SoldCompListingDTO[], takeCount: number):
     soldPrice: Prisma.Decimal;
     soldDate: Date;
     listingUrl: string;
+    imageUrl?: string | null;
     conditionLabel: string | null;
     gradeLabel?: string | null;
     rawOrGraded?: string | null;
@@ -160,6 +166,7 @@ export function listingsFromDtos(rows: SoldCompListingDTO[], takeCount: number):
       soldPrice: new Prisma.Decimal(r.soldPrice.toFixed(2)),
       soldDate: r.soldDate,
       listingUrl: r.listingUrl,
+      imageUrl: r.imageUrl ?? null,
       conditionLabel: r.conditionLabel ?? null,
       gradeLabel: r.gradeLabel ?? null,
       rawOrGraded: r.rawOrGraded ?? null,
@@ -234,6 +241,11 @@ export async function resolveCardSearch(input: {
   conditionBucket: ConditionBucket;
 }): Promise<CardSearchResult> {
   const card = await upsertCardFromApi(input);
+  const statsPre = await getCardSearchStats(card.normalizedCardKey);
+  const policy = getCardCachePolicy(statsPre);
+  const ttlMs = cachePolicyTtlMs(policy);
+  await recordCardSearchEvent(card.normalizedCardKey, null);
+
   const cacheKey = buildCacheKey(card.normalizedCardKey, input.conditionBucket);
 
   const existing = await prisma.cardCache.findUnique({
@@ -242,7 +254,7 @@ export async function resolveCardSearch(input: {
   });
 
   const now = Date.now();
-  if (existing && now - existing.lastScrapedAt.getTime() < CACHE_TTL_MS) {
+  if (existing && now - existing.lastScrapedAt.getTime() < ttlMs) {
     return mapCacheToResult(card, input.conditionBucket, existing, existing.listings);
   }
 

@@ -2,12 +2,18 @@ import type { ConditionBucket, ScrapeJobStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { scrapeCardMarketData } from "@/services/scraper/scraper";
 import { Prisma } from "@prisma/client";
-import { evaluatePriceAlertsForCard } from "@/services/price-alerts.service";
 import { ensureCardVariantForCard } from "@/services/card-normalization.service";
-import { fetchAndPersistActiveListingsForVariant } from "@/services/active-listing.service";
-import { evaluateWatchlistForActiveSnapshot } from "@/services/watchlist-evaluation.service";
 import { tryAcquireScrapeLock, releaseScrapeLock } from "@/lib/scrape/scrape-lock";
-import { isPiggybackActiveOnSoldEnabled } from "@/lib/scrape/config";
+import { buildEbaySoldSearchKeyword } from "@/lib/search/sold-search-query";
+import { logSoldScrapeMetric } from "@/services/apify/scrape-metrics";
+import {
+  consumeReservedFreeUpdatedLookupCredit,
+  refundReservedFreeUpdatedLookupCredit,
+} from "@/services/fresh-scrape-usage.service";
+
+function storeRawPayload(): boolean {
+  return process.env.SCRAPING_STORE_RAW_PAYLOAD === "true";
+}
 
 export async function processPendingScrapeJobs(input?: { limit?: number }): Promise<{
   processed: number;
@@ -28,6 +34,7 @@ export async function processPendingScrapeJobs(input?: { limit?: number }): Prom
         cardId: true,
         conditionBucket: true,
         cacheKey: true,
+        requestedByUserId: true,
       },
     });
 
@@ -42,7 +49,6 @@ export async function processPendingScrapeJobs(input?: { limit?: number }): Prom
     processed += 1;
 
     let lockHeld = false;
-    let completedVariantId: string | null = null;
     try {
       const card = await prisma.card.findUniqueOrThrow({
         where: { id: next.cardId },
@@ -73,10 +79,22 @@ export async function processPendingScrapeJobs(input?: { limit?: number }): Prom
       }
       lockHeld = true;
 
+      const keyword = buildEbaySoldSearchKeyword({
+        name: card.name,
+        setName: card.setName,
+        cardNumber: card.cardNumber,
+        conditionBucket: next.conditionBucket as ConditionBucket,
+      });
+
       const scraped = await scrapeCardMarketData({
         normalizedCardIdentifier: card.normalizedCardKey,
-        queryText: [card.name, card.setName, card.cardNumber].filter(Boolean).join(" "),
+        queryText: keyword,
+        conditionBucket: next.conditionBucket as ConditionBucket,
+        cacheKey: next.cacheKey,
       });
+
+      const listings = scraped.soldListings.slice(0, 5);
+      const n = listings.length;
 
       const cache = await prisma.$transaction(async (tx) => {
         const c = await tx.cardCache.upsert({
@@ -86,50 +104,55 @@ export async function processPendingScrapeJobs(input?: { limit?: number }): Prom
             cardVariantId: variant.id,
             conditionBucket: next.conditionBucket as ConditionBucket,
             cacheKey: next.cacheKey,
+            ebaySearchKeyword: keyword,
             avgPrice: new Prisma.Decimal(scraped.averagePrice.toFixed(2)),
-            medianPrice: new Prisma.Decimal(scraped.averagePrice.toFixed(2)),
+            medianPrice: new Prisma.Decimal(scraped.medianPrice.toFixed(2)),
             lowPrice: new Prisma.Decimal(scraped.minPrice.toFixed(2)),
             highPrice: new Prisma.Decimal(scraped.maxPrice.toFixed(2)),
-            listingsCount: 5,
+            listingsCount: n,
             lastScrapedAt: scraped.scrapedAt,
             lastReturnedAt: null,
+            lastScrapeError: null,
           },
           update: {
             cardVariantId: variant.id,
+            ebaySearchKeyword: keyword,
             avgPrice: new Prisma.Decimal(scraped.averagePrice.toFixed(2)),
-            medianPrice: new Prisma.Decimal(scraped.averagePrice.toFixed(2)),
+            medianPrice: new Prisma.Decimal(scraped.medianPrice.toFixed(2)),
             lowPrice: new Prisma.Decimal(scraped.minPrice.toFixed(2)),
             highPrice: new Prisma.Decimal(scraped.maxPrice.toFixed(2)),
-            listingsCount: 5,
+            listingsCount: n,
             lastScrapedAt: scraped.scrapedAt,
+            lastScrapeError: null,
           },
         });
 
         await tx.cardCacheListing.deleteMany({ where: { cardCacheId: c.id } });
-        await tx.cardCacheListing.createMany({
-          data: scraped.soldListings.slice(0, 5).map((l, i) => ({
-            cardCacheId: c.id,
-            title: l.title,
-            source: "ebay",
-            soldPrice: new Prisma.Decimal(l.soldPrice.toFixed(2)),
-            soldDate: l.soldAt,
-            listingUrl: l.itemUrl ?? "",
-            itemId: l.itemId ?? null,
-            imageUrl: l.imageUrl ?? null,
-            rawPayload: (l.raw ?? null) as Prisma.InputJsonValue,
-            conditionLabel: null,
-            gradeLabel: null,
-            rawOrGraded: null,
-            position: i + 1,
-          })),
-        });
+        if (listings.length > 0) {
+          await tx.cardCacheListing.createMany({
+            data: listings.map((l, i) => ({
+              cardCacheId: c.id,
+              title: l.title,
+              source: "ebay",
+              soldPrice: new Prisma.Decimal(l.soldPrice.toFixed(2)),
+              soldDate: l.soldAt,
+              listingUrl: l.itemUrl ?? "",
+              itemId: l.itemId ?? null,
+              imageUrl: l.imageUrl ?? null,
+              rawPayload: storeRawPayload() ? ((l.raw ?? null) as Prisma.InputJsonValue) : undefined,
+              conditionLabel: l.conditionLabel ?? null,
+              gradeLabel: null,
+              rawOrGraded: null,
+              position: i + 1,
+            })),
+          });
+        }
 
         return tx.cardCache.findUniqueOrThrow({
           where: { id: c.id },
         });
       });
 
-      // Create simple history points (MVP): record the new avg at scrape time.
       await prisma.priceHistoryPoint.createMany({
         data: [7, 30].map((periodDays) => ({
           cardId: card.id,
@@ -140,19 +163,16 @@ export async function processPendingScrapeJobs(input?: { limit?: number }): Prom
         skipDuplicates: false,
       });
 
-      await evaluatePriceAlertsForCard({
-        cardId: card.id,
-        conditionBucket: next.conditionBucket as ConditionBucket,
-        newAvgPrice: Number(cache.avgPrice),
-      });
-
       await prisma.scrapeJob.update({
         where: { id: next.id },
         data: { status: "completed", completedAt: new Date(), error: null },
       });
 
+      if (next.requestedByUserId) {
+        await consumeReservedFreeUpdatedLookupCredit(next.requestedByUserId);
+      }
+
       completed += 1;
-      completedVariantId = variant.id;
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unknown error";
       await prisma.scrapeJob.update({
@@ -160,27 +180,28 @@ export async function processPendingScrapeJobs(input?: { limit?: number }): Prom
         data: { status: "failed", completedAt: new Date(), error: msg.slice(0, 500) },
       });
       failed += 1;
+
+      if (next.requestedByUserId) {
+        await refundReservedFreeUpdatedLookupCredit(next.requestedByUserId);
+      }
+
+      await prisma.cardCache.updateMany({
+        where: { cacheKey: next.cacheKey },
+        data: { lastScrapeError: msg.slice(0, 500) },
+      });
+
+      logSoldScrapeMetric({
+        event: "apify_ebay_sold",
+        outcome: "apify_run_failure",
+        cacheKey: next.cacheKey,
+        error: msg.slice(0, 200),
+      });
     } finally {
       if (lockHeld) {
         await releaseScrapeLock({ scope: "sold", lockKey: next.cacheKey });
-      }
-    }
-
-    if (completedVariantId && isPiggybackActiveOnSoldEnabled()) {
-      const watchCount = await prisma.watchlistItem.count({
-        where: { cardVariantId: completedVariantId, alertEnabled: true },
-      });
-      if (watchCount > 0) {
-        const activeRes = await fetchAndPersistActiveListingsForVariant({
-          cardVariantId: completedVariantId,
-        });
-        if (activeRes.ok) {
-          await evaluateWatchlistForActiveSnapshot({ cardVariantId: completedVariantId });
-        }
       }
     }
   }
 
   return { processed, completed, failed };
 }
-

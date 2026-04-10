@@ -1,3 +1,5 @@
+import type { ConditionBucket } from "@prisma/client";
+
 export type ScrapedSoldListing = {
   title: string;
   soldPrice: number;
@@ -5,35 +7,22 @@ export type ScrapedSoldListing = {
   itemUrl?: string | null;
   itemId?: string | null;
   imageUrl?: string | null;
+  conditionLabel?: string | null;
   raw?: unknown;
 };
+
+/** Candidate row from Apify before / after HTML trust checks — used by sold-listing filters. */
+export type SoldListingCandidate = ScrapedSoldListing;
 
 export type ScrapedCardSnapshot = {
   normalizedCardIdentifier: string;
   displayName?: string | null;
-  soldListings: ScrapedSoldListing[]; // must be exactly 5 for MVP
+  /** Up to 5 most recent valid (trustworthy) sold listings from the scrape. */
+  soldListings: ScrapedSoldListing[];
   averagePrice: number;
+  medianPrice: number;
   minPrice: number;
   maxPrice: number;
-  scrapedAt: Date;
-};
-
-/** Active listing row (MVP: Buy It Now only). */
-export type ScrapedActiveListing = {
-  title: string;
-  price: number;
-  shippingPrice?: number | null;
-  currency?: string;
-  listingUrl: string;
-  itemId?: string | null;
-  sellerLabel?: string | null;
-  isBuyItNow?: boolean;
-  raw?: unknown;
-};
-
-export type ScrapedActiveSnapshot = {
-  normalizedCardIdentifier: string;
-  listings: ScrapedActiveListing[];
   scrapedAt: Date;
 };
 
@@ -41,13 +30,9 @@ export type ScrapingProvider = {
   scrapeSoldSnapshot(input: {
     normalizedCardIdentifier: string;
     queryText: string;
+    conditionBucket: ConditionBucket;
+    /** For Apify metrics / dedupe logging only. */
+    cacheKey?: string;
   }): Promise<ScrapedCardSnapshot>;
-
-  /** BIN-only, capped by provider / env — never unbounded. */
-  scrapeActiveListings(input: {
-    normalizedCardIdentifier: string;
-    queryText: string;
-    maxItems: number;
-  }): Promise<ScrapedActiveSnapshot>;
 };
 

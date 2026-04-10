@@ -3,7 +3,8 @@ import { getScrapeLockTtlMs } from "@/lib/scrape/config";
 
 /**
  * Cost guardrail: one in-flight scrape per logical key (sold cacheKey or active cardVariantId).
- * Uses DB unique constraint — no Redis required for MVP.
+ * Uses DB unique constraint + PostgreSQL advisory locks so concurrent requests do not race on
+ * delete-then-create (avoids unique violations and noisy Prisma error logs).
  */
 export async function tryAcquireScrapeLock(input: {
   scope: "sold" | "active";
@@ -12,14 +13,36 @@ export async function tryAcquireScrapeLock(input: {
 }): Promise<boolean> {
   const ttlMs = input.ttlMs ?? getScrapeLockTtlMs();
   const expiresAt = new Date(Date.now() + ttlMs);
-  try {
-    await prisma.scrapeLock.create({
+  const now = new Date();
+
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`
+      SELECT pg_advisory_xact_lock(hashtext(${input.scope}::text), hashtext(${input.lockKey}::text))
+    `;
+
+    await tx.scrapeLock.deleteMany({
+      where: {
+        scope: input.scope,
+        lockKey: input.lockKey,
+        expiresAt: { lt: now },
+      },
+    });
+
+    const existing = await tx.scrapeLock.findUnique({
+      where: {
+        scope_lockKey: { scope: input.scope, lockKey: input.lockKey },
+      },
+    });
+
+    if (existing) {
+      return false;
+    }
+
+    await tx.scrapeLock.create({
       data: { scope: input.scope, lockKey: input.lockKey, expiresAt },
     });
     return true;
-  } catch {
-    return false;
-  }
+  });
 }
 
 export async function releaseScrapeLock(input: { scope: "sold" | "active"; lockKey: string }): Promise<void> {

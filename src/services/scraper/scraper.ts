@@ -1,5 +1,6 @@
+import type { ConditionBucket } from "@prisma/client";
 import { getScrapingProvider } from "@/lib/scraping/provider";
-import type { ScrapedActiveSnapshot, ScrapedCardSnapshot } from "@/lib/scraping/types";
+import type { ScrapedCardSnapshot } from "@/lib/scraping/types";
 
 /**
  * Scraper adapter interface (MVP).
@@ -9,23 +10,14 @@ import type { ScrapedActiveSnapshot, ScrapedCardSnapshot } from "@/lib/scraping/
 export async function scrapeCardMarketData(input: {
   normalizedCardIdentifier: string;
   queryText: string;
+  conditionBucket: ConditionBucket;
+  cacheKey?: string;
 }): Promise<ScrapedCardSnapshot> {
   const provider = getScrapingProvider();
   return provider.scrapeSoldSnapshot({
     normalizedCardIdentifier: input.normalizedCardIdentifier,
     queryText: input.queryText,
-  });
-}
-
-export async function scrapeActiveMarketListings(input: {
-  normalizedCardIdentifier: string;
-  queryText: string;
-  maxItems: number;
-}): Promise<ScrapedActiveSnapshot> {
-  const provider = getScrapingProvider();
-  return provider.scrapeActiveListings({
-    normalizedCardIdentifier: input.normalizedCardIdentifier,
-    queryText: input.queryText,
-    maxItems: input.maxItems,
+    conditionBucket: input.conditionBucket,
+    cacheKey: input.cacheKey,
   });
 }

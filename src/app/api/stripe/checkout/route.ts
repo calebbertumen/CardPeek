@@ -45,6 +45,12 @@ export async function POST() {
       metadata: { userId },
     },
     metadata: { userId },
+    /** Shown on Stripe’s hosted Checkout next to the pay button (plain text; links on our pricing card). */
+    custom_text: {
+      submit: {
+        message: `By subscribing, you agree to CardPeek’s Terms and Refund Policy. Full refund available within 5 days of your first purchase only. ${appUrl}/legal/terms · ${appUrl}/legal/refund-policy`,
+      },
+    },
   });
 
   return NextResponse.json({ url: checkout.url }, { headers: { "Cache-Control": "no-store" } });

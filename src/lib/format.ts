@@ -24,3 +24,13 @@ export function formatUpdatedAt(d: Date): string {
     minute: "2-digit",
   }).format(d);
 }
+
+/** Next subscription charge / renewal date (date-only, user locale). */
+export function formatNextBillingDate(d: Date): string {
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  }).format(d);
+}

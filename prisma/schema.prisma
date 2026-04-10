@@ -45,6 +45,29 @@ model User {
   stripeCustomerId String? @unique
   createdAt     DateTime  @default(now())
 
+  /// Runtime Collector access (synced from Stripe + cancel/refund flows).
+  collectorTierActive           Boolean   @default(false)
+  firstCollectorPurchaseAt      DateTime?
+  hasUsedCollectorRefund        Boolean   @default(false)
+  hasEverPurchasedCollector     Boolean   @default(false)
+  /** Set when a Collector subscription ends (deleted) or after immediate refund cancel — blocks refund on resubscribe. */
+  hasEverCanceledCollector      Boolean   @default(false)
+  /** Set once on first successful Collector invoice; never overwritten — sole refund target. */
+  firstCollectorPaymentIntentId String?   @unique
+  firstCollectorInvoiceId       String?
+
+  /**
+   * Free tier: lifetime updated market lookups (fresh sold-cache scrapes).
+   * - Starter users: limited to `freeLifetimeUpdatedLookupsLimit` total (defaults to 3)
+   * - Collector users: not constrained by this limit
+   *
+   * To prevent concurrent requests from over-consuming, we reserve a credit when a scrape job is queued,
+   * then either consume it after a successful scrape or refund it on failure.
+   */
+  freeLifetimeUpdatedLookupsLimit    Int @default(3)
+  freeLifetimeUpdatedLookupsUsed     Int @default(0)
+  freeLifetimeUpdatedLookupsReserved Int @default(0)
+
   accounts      Account[]
   sessions      Session[]
   savedSearches SavedSearch[]
@@ -123,6 +146,17 @@ model Card {
   cardVariants  CardVariant[]
 }
 
+/// One row per in-app search, keyed by canonical normalized card key (not raw query). Used for adaptive cache TTL.
+model CardSearchEvent {
+  id                String   @id @default(cuid())
+  normalizedCardKey String
+  searchedAt        DateTime @default(now())
+  userId            String?
+
+  @@index([normalizedCardKey, searchedAt(sort: Desc)])
+  @@index([searchedAt])
+}
+
 /// Canonical identity for ONE scrape unit (shared across all users watching this variant).
 model CardVariant {
   id               String          @id @default(cuid())
@@ -156,6 +190,8 @@ model CardCache {
   cardVariant     CardVariant?    @relation(fields: [cardVariantId], references: [id], onDelete: SetNull)
   conditionBucket ConditionBucket
   cacheKey        String          @unique
+  /// Exact eBay keyword last sent to Apify (for debugging / dedupe visibility).
+  ebaySearchKeyword String?
   avgPrice        Decimal         @db.Decimal(12, 2)
   medianPrice     Decimal         @db.Decimal(12, 2)
   lowPrice        Decimal         @db.Decimal(12, 2)
@@ -163,6 +199,8 @@ model CardCache {
   listingsCount   Int
   lastScrapedAt   DateTime
   lastReturnedAt  DateTime?
+  /// Last Apify scrape error message (cache row is not deleted on failure).
+  lastScrapeError String?         @db.VarChar(500)
 
   listings      CardCacheListing[]
   savedSearches SavedSearch[]
@@ -386,16 +424,19 @@ model ScrapeJob {
   @@index([kind, status, priority, createdAt])
 }
 
-/// Placeholder for future Stripe subscriptions — not wired to payments in MVP.
+/// Stripe subscription mirror (Collector).
 model Subscription {
   id                   String    @id @default(cuid())
   userId               String
   user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   stripeCustomerId     String?   @unique
   stripeSubscriptionId String?   @unique
-  status               String    @default("inactive")
+  /// Persisted column name remains `status` for existing databases.
+  subscriptionStatus   String    @default("inactive") @map("status")
   planId               String?
-  currentPeriodEnd     DateTime?
+  /// Persisted column name remains `currentPeriodEnd`.
+  subscriptionCurrentPeriodEnd DateTime? @map("currentPeriodEnd")
+  cancelAtPeriodEnd    Boolean   @default(false)
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 

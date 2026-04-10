@@ -19,7 +19,7 @@ export default function RegisterPage({
   return (
     <AuthCard
       title="Create your account"
-      subtitle="Starter includes 7 searches per day and tracking for up to 3 cards."
+      subtitle="Starter includes 1 search per day and 3 lifetime fresh data updates."
     >
       <RegisterForm callbackUrl={callbackUrl} />
     </AuthCard>

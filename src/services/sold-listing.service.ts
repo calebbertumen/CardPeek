@@ -2,6 +2,8 @@ import type { ConditionBucket } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { buildCacheKey } from "@/lib/normalize";
 import { isSoldCacheStale } from "@/lib/scrape/staleness";
+import { getCardCachePolicy, cachePolicyTtlMs } from "@/lib/cache/card-cache-policy";
+import { getCardSearchStats } from "@/services/card-search-activity.service";
 
 /**
  * Sold comps: read-only helpers. External fetches must go through the scrape queue + worker
@@ -21,7 +23,12 @@ export async function getSoldCacheState(input: {
     select: { lastScrapedAt: true },
   });
   if (!row) return { kind: "missing" };
-  return isSoldCacheStale(row.lastScrapedAt)
+
+  const stats = await getCardSearchStats(input.normalizedCardKey);
+  const policy = getCardCachePolicy(stats);
+  const ttlMs = cachePolicyTtlMs(policy);
+
+  return isSoldCacheStale(row.lastScrapedAt, Date.now(), ttlMs)
     ? { kind: "stale", lastScrapedAt: row.lastScrapedAt }
     : { kind: "fresh", lastScrapedAt: row.lastScrapedAt };
 }

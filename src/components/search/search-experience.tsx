@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useFormState, useFormStatus } from "react-dom";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { searchCardStateAction, type SearchCardState } from "@/actions/search-card";
 import type { SearchPageFormDefaults } from "@/lib/search-url";
 import { Button } from "@/components/ui/button";
@@ -12,8 +11,7 @@ import { SearchBarShell } from "@/components/search/search-bar-shell";
 import { SearchResults } from "./search-results";
 import { SearchResultsSkeleton } from "./search-results-skeleton";
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
+function SubmitButton({ pending }: { pending: boolean }) {
   return (
     <Button type="submit" disabled={pending} className="min-h-11 min-w-[8.5rem] rounded-full px-8 shadow-sm">
       {pending ? "Searching…" : "See results"}
@@ -21,9 +19,7 @@ function SubmitButton() {
   );
 }
 
-function ResultsSection({ state }: { state: SearchCardState | null }) {
-  const { pending } = useFormStatus();
-
+function ResultsSection({ state, pending }: { state: SearchCardState | null; pending: boolean }) {
   if (pending) {
     return <SearchResultsSkeleton />;
   }
@@ -49,15 +45,16 @@ function ResultsSection({ state }: { state: SearchCardState | null }) {
           <p className="text-sm text-muted-foreground">{state.message}</p>
           {t === "preview" ? (
             <p className="text-sm text-muted-foreground">
-              Create a free account for Starter (7 searches/day) or upgrade to Collector for priority data updates and deal alerts.
+              Create a free account to unlock more searches and a fuller market snapshot.
             </p>
           ) : t === "starter" ? (
             <p className="text-sm text-muted-foreground">
-              Collector gives you faster data updates, full listing detail, and deal alerts when prices match your targets.
+              Collector gets you newly updated data sooner, plus the most complete sales snapshot we have.
             </p>
           ) : (
             <p className="text-sm text-muted-foreground">
-              A refresh may already be queued; Collector gets priority access to updated market data.
+              A refresh may already be queued. Data is refreshed automatically when needed; most cards update within
+              24–72 hours.
             </p>
           )}
         </div>
@@ -78,7 +75,7 @@ function ResultsSection({ state }: { state: SearchCardState | null }) {
           ) : null}
         </div>
         <p className="mt-5 text-xs text-muted-foreground">
-          Based on recent market sales. Updated periodically. Data may not reflect real-time listings.
+          Based on recent market sales. Updated automatically when needed. Data may not reflect real-time listings.
         </p>
       </div>
     );
@@ -94,8 +91,12 @@ type SearchExperienceProps = {
 };
 
 export function SearchExperience({ initialFormState, formDefaults, viewerPlanId }: SearchExperienceProps) {
-  const [state, formAction] = useFormState(searchCardStateAction, initialFormState);
+  const [state, setState] = useState<SearchCardState | null>(initialFormState);
+  const stateRef = useRef<SearchCardState | null>(initialFormState);
+  const [isPending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
+
+  stateRef.current = state;
 
   useEffect(() => {
     if (state?.ok === false && state.code === "VALIDATION") {
@@ -104,7 +105,18 @@ export function SearchExperience({ initialFormState, formDefaults, viewerPlanId 
   }, [state]);
 
   return (
-    <form ref={formRef} action={formAction} className="flex w-full flex-col">
+    <form
+      ref={formRef}
+      action={(formData) => {
+        startTransition(() => {
+          void (async () => {
+            const next = await searchCardStateAction(stateRef.current, formData);
+            setState(next);
+          })();
+        });
+      }}
+      className="flex w-full flex-col"
+    >
       {/* Full viewport-width search strip, directly under the site header */}
       <div className="sticky top-14 z-30 w-full border-b border-border/60 bg-background/95 backdrop-blur-md sm:top-16">
         <div className="w-full py-4 sm:py-5">
@@ -115,7 +127,7 @@ export function SearchExperience({ initialFormState, formDefaults, viewerPlanId 
                   idPrefix="results"
                   defaults={formDefaults}
                   viewerPlanId={viewerPlanId}
-                  actionsSlot={<SubmitButton />}
+                  actionsSlot={<SubmitButton pending={isPending} />}
                 />
               }
               footerSlot={
@@ -129,8 +141,8 @@ export function SearchExperience({ initialFormState, formDefaults, viewerPlanId 
                         {state.message.includes("Preview limit")
                           ? "Create a free account to keep exploring card prices and recent market data."
                             : state.tier === "collector"
-                            ? "Collector includes a high daily search allowance. You can try again tomorrow."
-                            : "Starter includes 7 searches per day. Upgrade to Collector for a higher allowance, priority data updates, and deal alerts."}
+                            ? "Collector includes unlimited searches. You can try again tomorrow."
+                            : "Starter includes limited searches. Upgrade to Collector to unlock sold listing details."}
                       </p>
                       <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
                         {state.message.includes("Preview limit") || state.tier !== "collector" ? (
@@ -172,13 +184,7 @@ export function SearchExperience({ initialFormState, formDefaults, viewerPlanId 
       </div>
 
       <div className="mx-auto w-full max-w-5xl px-4 pb-10 pt-8 sm:px-6 sm:pb-14 sm:pt-10">
-        <div className="mb-6 space-y-2 text-center sm:text-left">
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Sold comps</h1>
-          <p className="mx-auto max-w-2xl text-sm text-muted-foreground sm:mx-0">
-            Pricing snapshot and recent listings for your search.
-          </p>
-        </div>
-        <ResultsSection state={state} />
+        <ResultsSection state={state} pending={isPending} />
       </div>
     </form>
   );

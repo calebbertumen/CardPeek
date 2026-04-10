@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { getUserSubscriptionSummary } from "@/lib/billing/get-user-plan";
+import { formatNextBillingDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -15,6 +17,15 @@ export default async function DashboardPage() {
     redirect("/login?callbackUrl=/dashboard");
   }
 
+  const subscription = await getUserSubscriptionSummary(session.user.id);
+
+  const nextBillingLine =
+    subscription.planId === "starter"
+      ? "Starter is free—no charges."
+      : subscription.currentPeriodEnd
+        ? formatNextBillingDate(subscription.currentPeriodEnd)
+        : "Renewal date will appear here after your subscription is confirmed with Stripe.";
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
       <div className="space-y-2">
@@ -27,30 +38,32 @@ export default async function DashboardPage() {
       <div className="mt-10 grid gap-6">
         <Card className="border-border/80 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-lg">Recent searches</CardTitle>
-            <CardDescription>
-              Your search history will appear here in a future update.
-            </CardDescription>
+            <CardTitle className="text-lg">Subscription</CardTitle>
+            <CardDescription>Your plan and billing schedule.</CardDescription>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              For now, jump back to search to run unlimited lookups.
-            </p>
-            <Button asChild className="mt-4 rounded-full">
-              <Link href="/search">Go to search</Link>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/80 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-lg">Saved searches</CardTitle>
-            <CardDescription>Save comps you revisit often—coming soon.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild variant="outline" className="rounded-full">
-              <Link href="/saved">View saved searches</Link>
-            </Button>
+          <CardContent className="space-y-4">
+            <dl className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1">
+                <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Current tier</dt>
+                <dd className="text-base font-semibold text-foreground">{subscription.planName}</dd>
+              </div>
+              <div className="space-y-1">
+                <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  {subscription.planId === "starter" ? "Billing" : "Next charge"}
+                </dt>
+                <dd className="text-sm leading-relaxed text-foreground">{nextBillingLine}</dd>
+              </div>
+            </dl>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant="outline" className="rounded-full">
+                <Link href="/pricing">View plans</Link>
+              </Button>
+              {subscription.planId === "collector" ? (
+                <Button asChild variant="outline" className="rounded-full">
+                  <Link href="/settings/billing">Billing &amp; cancellation</Link>
+                </Button>
+              ) : null}
+            </div>
           </CardContent>
         </Card>
       </div>

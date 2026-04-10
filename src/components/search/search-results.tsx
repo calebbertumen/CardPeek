@@ -1,10 +1,13 @@
 import Image from "next/image";
 import { Separator } from "@/components/ui/separator";
 import type { CardMarketView } from "@/lib/market/card-market-view";
+import {
+  buildEbaySoldListingsSearchUrl,
+  buildEbaySoldSearchKeyword,
+} from "@/lib/search/sold-search-query";
 import { ListingCards } from "./listing-cards";
 import { PricingSummary } from "./pricing-summary";
 import { RefreshKick } from "./refresh-kick";
-import { PriceAlertsPanel } from "./price-alerts-panel";
 import type { AccessTier } from "@/lib/billing/access";
 
 type Props = {
@@ -13,14 +16,43 @@ type Props = {
 };
 
 export function SearchResults({ data, tier }: Props) {
+  const resolvedEbayKeyword =
+    data.ebaySearchKeyword?.trim() ||
+    buildEbaySoldSearchKeyword({
+      name: data.card.name,
+      setName: data.card.setName,
+      cardNumber: data.card.cardNumber,
+      conditionBucket: data.conditionBucket,
+    });
+  const ebaySoldSearchUrl = resolvedEbayKeyword
+    ? buildEbaySoldListingsSearchUrl(resolvedEbayKeyword)
+    : null;
+
   return (
     <div className="mt-12 space-y-10">
       <RefreshKick enabled={data.isRefreshing} />
       <div className="flex flex-col gap-2">
         <h2 className="text-lg font-semibold tracking-tight">Results</h2>
         <p className="text-sm text-muted-foreground">
-          Based on recent market sales. Updated periodically. Data may not reflect real-time listings.
+          Based on recent market sales. Updated automatically when needed. Data may not reflect real-time listings.
         </p>
+        {tier === "starter" && data.freeUpdatedLookups ? (
+          <p className="text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">
+              {data.freeUpdatedLookups.used} of {data.freeUpdatedLookups.limit}
+            </span>{" "}
+            fresh data updates used ·{" "}
+            <span className="font-medium text-foreground">
+              {data.freeUpdatedLookups.remaining}
+            </span>{" "}
+            remaining
+          </p>
+        ) : tier === "collector" ? (
+          <p className="text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">Unlimited</span> access to updated market data (fair use
+            applies)
+          </p>
+        ) : null}
       </div>
 
       <div className="grid gap-10 lg:grid-cols-[minmax(0,280px)_1fr] lg:items-start lg:gap-12">
@@ -51,15 +83,19 @@ export function SearchResults({ data, tier }: Props) {
                   ? "Refreshing market data (in background)."
                   : tier === "collector"
                     ? "Showing saved results while we refresh."
-                    : "Showing recent market data; updates run periodically."}
+                    : "Showing cached market data. Updates refresh automatically when needed (typically within 24–72 hours)."}
               </p>
             ) : null}
           </div>
         </div>
 
         <div className="min-w-0 space-y-8">
+          {data.lastScrapeError && data.isStale ? (
+            <p className="rounded-xl border border-dashed border-border/80 bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
+              Last update attempt failed. Showing the most recent saved estimate. You can try again after a refresh.
+            </p>
+          ) : null}
           <PricingSummary data={data} tier={tier} />
-          <PriceAlertsPanel tier={tier} cardId={data.card.id} />
         </div>
       </div>
 
@@ -67,12 +103,22 @@ export function SearchResults({ data, tier }: Props) {
 
       <section className="space-y-4">
         <div>
-          <h2 className="text-lg font-semibold tracking-tight">Recent sold listings</h2>
+          <h2 className="text-lg font-semibold tracking-tight">Recent sales</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Stored from the latest market update for this card (not real-time).
           </p>
+          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+            <span className="font-medium text-foreground">About “View” links:</span> eBay may change or expire listing
+            URLs after a sale. You won’t always land on the exact sold listing page, even though the price and title
+            here match what we stored from the sale.
+          </p>
         </div>
-        <ListingCards listings={data.listings} tier={tier} />
+        <ListingCards
+          listings={data.listings}
+          listingsCount={data.listingsCount}
+          tier={tier}
+          ebaySoldSearchUrl={ebaySoldSearchUrl}
+        />
       </section>
     </div>
   );

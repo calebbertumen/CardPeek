@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 
 /**
  * Fires a one-shot request to process scrape jobs.
- * This keeps the search UX fast (never blocks) while still letting paid users get fresh data soon.
+ * This keeps the search UX fast (never blocks) while still letting paid users get updated data sooner.
  *
  * TODO(queue): Replace with real queue/worker (Upstash, Inngest, etc).
  */

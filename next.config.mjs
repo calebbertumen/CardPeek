@@ -4,6 +4,10 @@ const nextConfig = {
     remotePatterns: [
       { protocol: "https", hostname: "images.pokemontcg.io", pathname: "/**" },
       { protocol: "https", hostname: "images.scrydex.com", pathname: "/**" },
+      { protocol: "https", hostname: "i.ebayimg.com", pathname: "/**" },
+      { protocol: "https", hostname: "thumbs.ebaystatic.com", pathname: "/**" },
+      { protocol: "https", hostname: "ir.ebaystatic.com", pathname: "/**" },
+      { protocol: "https", hostname: "pictures.ebay.com", pathname: "/**" },
     ],
   },
 

@@ -11,6 +11,12 @@ import {
 import { createPortal } from "react-dom";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import fallbackSetNames from "@/data/pokemon-set-names-fallback.json";
+
+/** Same snapshot as `/api/tcg-sets` fallback so the combobox has options before the first network request (dev compile / slow API). */
+const INITIAL_SET_OPTIONS = (fallbackSetNames as string[]).filter(
+  (n) => typeof n === "string" && n.trim(),
+);
 
 type SetNameComboboxProps = {
   id: string;
@@ -27,9 +33,9 @@ export function SetNameCombobox({
   className,
   placeholder = "Type or pick a set",
 }: SetNameComboboxProps) {
-  const [options, setOptions] = useState<string[]>([]);
+  const [options, setOptions] = useState<string[]>(() => INITIAL_SET_OPTIONS);
   const [loadError, setLoadError] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState(defaultValue);
   const [highlighted, setHighlighted] = useState(0);
@@ -89,7 +95,6 @@ export function SetNameCombobox({
         }
       }
       if (!cancelled) {
-        setOptions([]);
         setLoadError(true);
         if (lastErr) console.error("set list fetch failed", lastErr);
       }

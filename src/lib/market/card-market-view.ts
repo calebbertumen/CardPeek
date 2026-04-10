@@ -12,6 +12,8 @@ export type CardMarketView = {
   };
   conditionBucket: ConditionBucket;
   avgPrice: number;
+  /** When present, indicates the average excluded outlier sale prices. */
+  avgExcludedPrices?: number[] | null;
   medianPrice: number;
   lowPrice: number;
   highPrice: number;
@@ -19,12 +21,19 @@ export type CardMarketView = {
   lastUpdated: Date;
   isStale: boolean;
   isRefreshing: boolean;
+  /** When the last Apify run failed; estimate may still reflect an older successful scrape. */
+  lastScrapeError?: string | null;
+  /** Keyword sent to eBay / Apify for the cached sold snapshot (same string as the link we build for “search on eBay”). */
+  ebaySearchKeyword: string | null;
+  /** Starter only: lifetime updated card lookups usage. Null for Collector/Preview. */
+  freeUpdatedLookups: null | { limit: number; used: number; remaining: number };
   listings: Array<{
     title: string;
     source: string;
     soldPrice: number;
     soldDate: Date;
     listingUrl: string;
+    imageUrl: string | null;
     conditionLabel: string | null;
     gradeLabel: string | null;
     rawOrGraded: string | null;

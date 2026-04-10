@@ -1,10 +1,11 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 
-export function SearchResultsSkeleton() {
+export function SearchResultsSkeleton({ className }: { className?: string }) {
   return (
-    <div className="mt-12 space-y-10">
+    <div className={cn("mt-12 space-y-10", className)}>
       <div className="space-y-2">
         <Skeleton className="h-6 w-28" />
         <Skeleton className="h-4 w-full max-w-lg" />

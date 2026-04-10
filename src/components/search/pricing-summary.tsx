@@ -14,6 +14,9 @@ function conditionLabel(bucket: string): string {
 }
 
 export function PricingSummary({ data, tier }: Props) {
+  const showOutlierNote =
+    tier === "collector" && Array.isArray(data.avgExcludedPrices) && data.avgExcludedPrices.length > 0;
+
   return (
     <Card className="border-border/60 bg-gradient-to-br from-primary/[0.08] via-card to-card shadow-lg shadow-black/30">
       <CardHeader className="pb-2">
@@ -21,7 +24,7 @@ export function PricingSummary({ data, tier }: Props) {
           Pricing snapshot
         </CardTitle>
         <p className="text-xs text-muted-foreground">
-          Average and range use the 5 most recent sold listings from the latest market update (the same 5 used for your tier).
+          Average and range are calculated from recent sold listings in the latest market update.
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -32,6 +35,14 @@ export function PricingSummary({ data, tier }: Props) {
           <p className="mt-1 text-4xl font-semibold tracking-tight text-primary sm:text-5xl">
             {formatUsd(data.avgPrice)}
           </p>
+          {showOutlierNote ? (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Outliers excluded from average:{" "}
+              <span className="font-medium text-foreground">
+                {data.avgExcludedPrices!.map((p) => formatUsd(p)).join(", ")}
+              </span>
+            </p>
+          ) : null}
         </div>
         <div className="grid grid-cols-2 gap-4 border-t border-border/60 pt-4 sm:grid-cols-4">
           <div>
@@ -59,11 +70,9 @@ export function PricingSummary({ data, tier }: Props) {
           <span>Last updated {formatUpdatedAt(data.lastUpdated)}</span>
         </div>
         <p className="text-xs text-muted-foreground">
-          {tier === "starter"
-            ? "Starter includes 3 visible sold listings. Upgrade to Collector to see the full 5-listing market snapshot."
-            : tier === "preview"
-              ? "Preview mode includes 1 visible sold listing. Create a free account to see more results."
-              : "Full 5-listing market snapshot is shown below."}
+          {tier === "collector"
+            ? "The 5 most recent sold listings are shown below."
+            : "Sold listing details are locked on Free. Upgrade to Collector to see the actual sales behind the estimate."}
         </p>
       </CardContent>
     </Card>

@@ -1,18 +1,22 @@
 import type {
-  ScrapedActiveSnapshot,
   ScrapedCardSnapshot,
   ScrapingProvider,
 } from "./types";
+import { computeDisplayedAveragePrice } from "@/lib/pricing/compute-displayed-average-price";
 
 function computeStats(prices: number[]) {
   const min = Math.min(...prices);
   const max = Math.max(...prices);
-  const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
-  return { min, max, avg };
+  const avg = computeDisplayedAveragePrice(prices).displayedAveragePrice ?? 0;
+  const s = [...prices].sort((a, b) => a - b);
+  const mid = Math.floor(s.length / 2);
+  const median = s.length % 2 === 0 ? (s[mid - 1]! + s[mid]!) / 2 : s[mid]!;
+  return { min, max, avg, median };
 }
 
 export const mockScrapingProvider: ScrapingProvider = {
-  async scrapeSoldSnapshot({ normalizedCardIdentifier, queryText }): Promise<ScrapedCardSnapshot> {
+  async scrapeSoldSnapshot({ normalizedCardIdentifier, queryText, conditionBucket }): Promise<ScrapedCardSnapshot> {
+    void conditionBucket;
     const now = new Date();
     const base = Math.abs(
       Array.from(normalizedCardIdentifier).reduce((a, c) => a + c.charCodeAt(0), 0) % 60,
@@ -20,7 +24,7 @@ export const mockScrapingProvider: ScrapingProvider = {
     const prices = [base + 80, base + 92, base + 85, base + 88, base + 90].map((n) =>
       Math.round(n * 100) / 100,
     );
-    const { min, max, avg } = computeStats(prices);
+    const { min, max, avg, median } = computeStats(prices);
     const soldListings = prices.map((p, i) => ({
       title: `${queryText} — sold listing ${i + 1}`,
       soldPrice: p,
@@ -35,34 +39,11 @@ export const mockScrapingProvider: ScrapingProvider = {
       displayName: queryText,
       soldListings,
       averagePrice: Math.round(avg * 100) / 100,
+      medianPrice: Math.round(median * 100) / 100,
       minPrice: Math.round(min * 100) / 100,
       maxPrice: Math.round(max * 100) / 100,
       scrapedAt: now,
     };
-  },
-
-  async scrapeActiveListings({ normalizedCardIdentifier, queryText, maxItems }): Promise<ScrapedActiveSnapshot> {
-    const now = new Date();
-    const base = Math.abs(
-      Array.from(normalizedCardIdentifier).reduce((a, c) => a + c.charCodeAt(0), 0) % 40,
-    );
-    const n = Math.min(Math.max(maxItems, 1), 20);
-    const listings = Array.from({ length: n }, (_, i) => {
-      const price = base + 50 + i * 2;
-      const ship = i % 2 === 0 ? 4.99 : 0;
-      return {
-        title: `${queryText} — BIN ${i + 1}`,
-        price,
-        shippingPrice: ship,
-        currency: "USD",
-        listingUrl: "https://www.ebay.com/",
-        itemId: `mock-${normalizedCardIdentifier.slice(0, 8)}-${i}`,
-        sellerLabel: "mock-seller",
-        isBuyItNow: true,
-        raw: null,
-      };
-    });
-    return { normalizedCardIdentifier, listings, scrapedAt: now };
   },
 };
 

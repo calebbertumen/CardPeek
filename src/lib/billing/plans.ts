@@ -21,7 +21,7 @@ export const PLANS: Record<PlanId, Plan> = {
     id: "collector",
     name: "Collector",
     priceMonthlyUsd: getCollectorPriceMonthlyUsd(),
-    description: "Full market visibility and smarter deal tracking.",
+    description: "Unlimited searches with the most complete pricing snapshot.",
   },
 };
 

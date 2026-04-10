@@ -128,6 +128,15 @@ export async function searchCardAction(
     });
 
     if (result.kind === "no_data") {
+      if (result.blockedReason === "FREE_LIFETIME_SCRAPE_LIMIT") {
+        return {
+          ok: false,
+          code: "LIMIT",
+          tier: "starter",
+          message:
+            "You’ve used your 3 lifetime fresh data updates. Upgrade to Collector for unlimited access to updated market data (fair use applies).",
+        };
+      }
       if (tier === "preview") {
         return {
           ok: false,
@@ -143,7 +152,7 @@ export async function searchCardAction(
           code: "NO_DATA",
           tier: "starter",
           message:
-            "We don’t have data for this card right now. Try another search, or upgrade to Collector for priority access to fresher market data and deal alerts.",
+            "We don’t have data for this card right now. Try another search, or upgrade to Collector for unlimited searches and unlimited access to updated market data.",
         };
       }
       return {

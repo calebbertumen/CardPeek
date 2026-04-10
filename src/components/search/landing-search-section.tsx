@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback } from "react";
+import { useCallback, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { CardSearchFields } from "@/components/search/card-search-fields";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,7 @@ type LandingSearchSectionProps = {
 
 export function LandingSearchSection({ shellClassName, viewerPlanId = "starter" }: LandingSearchSectionProps = {}) {
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
 
   const onSubmit = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
@@ -32,7 +33,9 @@ export function LandingSearchSection({ shellClassName, viewerPlanId = "starter" 
       if (cardNumber) params.set("cardNumber", cardNumber);
       if (condition && condition !== "raw_nm") params.set("condition", condition);
 
-      router.push(`/search?${params.toString()}`);
+      startTransition(() => {
+        router.push(`/search?${params.toString()}`);
+      });
     },
     [router],
   );
@@ -42,13 +45,17 @@ export function LandingSearchSection({ shellClassName, viewerPlanId = "starter" 
       id="search"
       className={cn("scroll-mt-24", shellClassName)}
       fieldsSlot={
-        <form onSubmit={onSubmit}>
+        <form onSubmit={onSubmit} aria-busy={isPending}>
           <CardSearchFields
             idPrefix="home"
             viewerPlanId={viewerPlanId}
             actionsSlot={
-              <Button type="submit" className="min-h-11 min-w-[8.5rem] rounded-full px-8 shadow-sm">
-                See results
+              <Button
+                type="submit"
+                disabled={isPending}
+                className="min-h-11 min-w-[8.5rem] rounded-full px-8 shadow-sm"
+              >
+                {isPending ? "Searching…" : "See results"}
               </Button>
             }
           />

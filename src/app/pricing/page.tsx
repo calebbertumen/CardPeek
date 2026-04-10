@@ -1,104 +1,202 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getPlan } from "@/lib/billing/plans";
+import { getPlan, type PlanId } from "@/lib/billing/plans";
 import { auth } from "@/lib/auth";
 import { getUserPlanId } from "@/lib/billing/get-user-plan";
 import { StripeCheckoutButton } from "@/components/billing/stripe-checkout-button";
+import { syncSubscriptionFromStripeForUser } from "@/services/billing/stripe-provisioning";
+import { cn } from "@/lib/utils";
+
+function pickSearchParam(value: string | string[] | undefined): string | undefined {
+  if (value === undefined) return undefined;
+  return Array.isArray(value) ? value[0] : value;
+}
 
 export const metadata: Metadata = {
   title: "Pricing",
 };
 
-async function CheckoutButton() {
-  const session = await auth();
-  if (!session?.user?.id) {
+function CollectorPlanActions({
+  userId,
+  currentPlanId,
+}: {
+  userId: string | undefined;
+  currentPlanId: PlanId | null;
+}) {
+  if (!userId) {
     return (
       <Button asChild className="w-full rounded-full">
-        <Link href="/register?callbackUrl=/pricing">Create free account</Link>
+        <Link href="/register?callbackUrl=/pricing">Unlock real prices</Link>
       </Button>
     );
   }
 
-  const planId = await getUserPlanId(session.user.id);
-  if (planId === "collector") {
+  if (currentPlanId === "collector") {
     return (
-      <Button
-        className="w-full rounded-full"
-        formAction={async () => {
-          "use server";
-        }}
-        disabled
-      >
-        Collector active
+      <Button type="button" className="w-full rounded-full" disabled>
+        Collector active ✅
       </Button>
     );
   }
 
-  return <StripeCheckoutButton>Start tracking deals</StripeCheckoutButton>;
+  return <StripeCheckoutButton>Unlock real prices</StripeCheckoutButton>;
 }
 
-export default async function PricingPage() {
+type PricingPageProps = {
+  searchParams: Record<string, string | string[] | undefined>;
+};
+
+export default async function PricingPage({ searchParams }: PricingPageProps) {
+  const session = await auth();
+  const userId = session?.user?.id;
+  const checkout = pickSearchParam(searchParams.checkout);
+
+  if (userId && checkout === "success") {
+    try {
+      await syncSubscriptionFromStripeForUser(userId);
+    } catch (e) {
+      console.error("[pricing] post-checkout Stripe sync failed", e);
+    }
+    redirect("/pricing");
+  }
+
+  const currentPlanId = userId ? await getUserPlanId(userId) : null;
   const collector = getPlan("collector");
+
+  const starterIsCurrent = Boolean(userId && currentPlanId === "starter");
+  const collectorIsCurrent = Boolean(userId && currentPlanId === "collector");
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-14 sm:px-6">
       <div className="text-center">
-        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Two simple tiers</h1>
+        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+          Know what your cards are actually worth.
+        </h1>
         <p className="mx-auto mt-3 max-w-lg text-muted-foreground">
-          Based on recent market sales. Updated periodically. Data may not reflect real-time listings.
+          Powered by real eBay sold listings. Updated automatically when needed.
         </p>
       </div>
 
-      <div className="mt-12 grid gap-6 md:grid-cols-2">
-        <Card className="border-border/80 shadow-md shadow-black/25">
+      <p className="mx-auto mt-10 max-w-xl text-center text-sm font-medium text-foreground">
+        Free gives you an estimate. Collector shows you the real market.
+      </p>
+
+      <div className="mt-8 grid gap-6 md:grid-cols-2">
+        <Card
+          className={cn(
+            "border-border/80 shadow-md shadow-black/25 transition-shadow",
+            starterIsCurrent && "border-primary/70 ring-2 ring-primary/25 shadow-primary/10",
+          )}
+        >
           <CardHeader>
-            <CardTitle className="text-xl">Starter</CardTitle>
-            <CardDescription>Quick card value checks with reliable market data.</CardDescription>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="space-y-1.5">
+                <CardTitle className="text-xl">Starter</CardTitle>
+                <CardDescription>Get a quick, reliable estimate of your card&apos;s value.</CardDescription>
+              </div>
+              {starterIsCurrent ? (
+                <Badge variant="default" className="shrink-0">
+                  Your plan
+                </Badge>
+              ) : null}
+            </div>
           </CardHeader>
           <CardContent className="space-y-6">
             <p className="text-4xl font-semibold tracking-tight text-primary">$0</p>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>• 7 searches/day</li>
-              <li>• Average price (based on recent sold listings)</li>
+              <li>• Unlimited searches (cached data)</li>
+              <li className="font-semibold text-foreground">• 3 lifetime fresh data updates</li>
+              <li>• Average price based on recent sales</li>
               <li>• Price range insights</li>
-              <li>• View 3 recent sold listings</li>
-              <li>• Track up to 3 cards</li>
-              <li>• Access recent market data</li>
-              <li>• Limited live data lookups</li>
+              <li>• Preview recent sales (blurred)</li>
             </ul>
-            <Button asChild className="w-full rounded-full">
-              <Link href="/search">Start searching</Link>
+            <Button asChild className="w-full rounded-full" variant={starterIsCurrent ? "secondary" : "default"}>
+              <Link href="/search">Check a card for free</Link>
             </Button>
-            <p className="text-xs text-muted-foreground">
-              Data is sourced from recent market activity and updated periodically.
-            </p>
           </CardContent>
         </Card>
 
-        <Card className="border-border/80 shadow-md shadow-black/25">
+        <Card
+          className={cn(
+            "border-border/80 shadow-md shadow-black/25 transition-shadow",
+            collectorIsCurrent && "border-primary/70 ring-2 ring-primary/25 shadow-primary/10",
+          )}
+        >
           <CardHeader>
-            <CardTitle className="text-xl">Collector</CardTitle>
-            <CardDescription>Full market visibility and smarter deal tracking.</CardDescription>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="space-y-1.5">
+                <CardTitle className="text-xl">Collector</CardTitle>
+                <CardDescription>See exactly what your cards are selling for.</CardDescription>
+              </div>
+              {collectorIsCurrent ? (
+                <Badge variant="default" className="shrink-0">
+                  Your plan
+                </Badge>
+              ) : null}
+            </div>
           </CardHeader>
           <CardContent className="space-y-6">
-            <p className="text-4xl font-semibold tracking-tight text-primary">${collector.priceMonthlyUsd.toFixed(2)}/mo</p>
+            <div>
+              <p className="text-4xl font-semibold tracking-tight text-primary">
+                ${collector.priceMonthlyUsd.toFixed(2)}/mo
+              </p>
+              <p className="mt-1 text-sm italic text-muted-foreground">Less than the price of one bad buy.</p>
+            </div>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>• High search allowance</li>
-              <li>• Average price + full price range insights</li>
-              <li>• View all recent sold listings</li>
-              <li>• Priority access to updated market data</li>
-              <li>• Refresh data anytime</li>
-              <li>• Get notified when listings match your target price</li>
-              <li>• Track up to 25 cards</li>
+              <li>• Full access to real sold listings</li>
+              <li>• See the 5 most recent verified sales</li>
+              <li>• Accurate pricing from actual transactions</li>
+              <li>• Full price range insights</li>
+              <li>• Unlimited access to updated market data (fair use applies)</li>
+              <li className="font-semibold text-foreground">• No more guessing or overpriced comps</li>
             </ul>
             <div id="checkout" />
-            {await CheckoutButton()}
-            <p className="text-xs text-muted-foreground">
-              Listings are updated regularly. Priority access ensures faster and more complete data.
-            </p>
+            {!collectorIsCurrent ? (
+              <p className="text-[11px] leading-snug text-muted-foreground sm:text-xs">
+                By subscribing, you agree to our{" "}
+                <Link href="/legal/terms" className="font-medium text-foreground underline underline-offset-2">
+                  Terms
+                </Link>{" "}
+                and{" "}
+                <Link href="/legal/refund-policy" className="font-medium text-foreground underline underline-offset-2">
+                  refund policy
+                </Link>
+                . Full refund available within 5 days of your first purchase only.
+              </p>
+            ) : null}
+            <CollectorPlanActions userId={userId} currentPlanId={currentPlanId} />
+            {collectorIsCurrent ? (
+              <Button asChild variant="outline" className="w-full rounded-full">
+                <Link href="/settings/billing">Manage billing &amp; cancellation</Link>
+              </Button>
+            ) : null}
           </CardContent>
         </Card>
+      </div>
+
+      <blockquote className="mx-auto mt-10 max-w-2xl border-l-2 border-border pl-4 text-sm leading-relaxed text-muted-foreground">
+        Data is refreshed automatically when needed. Most cards update within 24–72 hours.
+      </blockquote>
+
+      <div className="mx-auto mt-12 max-w-xl text-center">
+        <p className="text-xs leading-relaxed text-muted-foreground">Cancel anytime. No commitment.</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          <Link href="/legal/terms" className="underline underline-offset-4 hover:text-foreground">
+            Terms
+          </Link>
+          <span aria-hidden="true"> · </span>
+          <Link href="/legal/privacy" className="underline underline-offset-4 hover:text-foreground">
+            Privacy
+          </Link>
+          <span aria-hidden="true"> · </span>
+          <Link href="/legal/refund-policy" className="underline underline-offset-4 hover:text-foreground">
+            Refund policy
+          </Link>
+        </p>
       </div>
     </div>
   );

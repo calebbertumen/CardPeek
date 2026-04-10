@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
 import { getStripe } from "@/lib/stripe/server";
-import { upsertSubscriptionFromStripe, markSubscriptionInactive } from "@/services/billing/stripe-provisioning";
+import {
+  upsertSubscriptionFromStripe,
+  markSubscriptionInactive,
+} from "@/services/billing/stripe-provisioning";
+import { recordFirstCollectorPurchaseFromInvoiceIfNeeded } from "@/services/billing/first-collector-purchase.service";
 
 export async function POST(req: Request) {
   const stripe = getStripe();
@@ -24,7 +29,6 @@ export async function POST(req: Request) {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as import("stripe").Stripe.Checkout.Session;
-        // subscription checkout
         const userId = session?.metadata?.userId as string | undefined;
         const customerId = (session.customer as string | null) ?? null;
         const subscriptionId = (session.subscription as string | null) ?? null;
@@ -32,6 +36,33 @@ export async function POST(req: Request) {
           const sub = await stripe.subscriptions.retrieve(subscriptionId);
           await upsertSubscriptionFromStripe({ userId, customerId, subscription: sub });
         }
+        break;
+      }
+      case "invoice.paid": {
+        const invoice = event.data.object as import("stripe").Stripe.Invoice;
+        const customerId =
+          typeof invoice.customer === "string" ? invoice.customer : invoice.customer?.id ?? null;
+        const invSub = (invoice as unknown as { subscription?: string | { id: string } | null })
+          .subscription;
+        const subscriptionId =
+          typeof invSub === "string" ? invSub : invSub && typeof invSub === "object" ? invSub.id : null;
+        if (!customerId || !subscriptionId) break;
+
+        const dbUser = await prisma.user.findFirst({
+          where: { stripeCustomerId: customerId },
+          select: { id: true },
+        });
+        if (!dbUser) break;
+
+        await recordFirstCollectorPurchaseFromInvoiceIfNeeded(dbUser.id, invoice);
+
+        const sub = await stripe.subscriptions.retrieve(subscriptionId);
+        const metaUserId = (sub.metadata?.userId as string | undefined) ?? dbUser.id;
+        await upsertSubscriptionFromStripe({
+          userId: metaUserId,
+          customerId,
+          subscription: sub,
+        });
         break;
       }
       case "customer.subscription.created":
@@ -50,7 +81,6 @@ export async function POST(req: Request) {
         break;
       }
       default: {
-        // ignore unneeded events for MVP
         break;
       }
     }
@@ -61,4 +91,3 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ received: true });
 }
-
