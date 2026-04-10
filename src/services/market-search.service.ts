@@ -236,7 +236,9 @@ export async function searchCardMarketData(input: {
         ent.limit != null && ent.used != null && ent.remaining != null
           ? { limit: ent.limit, used: ent.used, remaining: ent.remaining }
           : undefined;
-      if (!ent.allowed) {
+      // After the last lifetime scrape succeeds, `used === limit` so `allowed` is false, but we already
+      // have `existing` cache — still show results instead of FREE_LIFETIME_SCRAPE_LIMIT.
+      if (!ent.allowed && !existing) {
         return {
           kind: "no_data",
           card: {
