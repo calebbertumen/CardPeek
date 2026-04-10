@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { searchCardStateAction, type SearchCardState } from "@/actions/search-card";
-import type { SearchPageFormDefaults } from "@/lib/search-url";
+import { buildSearchQueryStringFromFields, type SearchPageFormDefaults } from "@/lib/search-url";
 import { Button } from "@/components/ui/button";
 import { CardSearchFields } from "@/components/search/card-search-fields";
 import { searchBarWidthClassName } from "@/components/search/search-bar-layout";
@@ -91,6 +92,7 @@ type SearchExperienceProps = {
 };
 
 export function SearchExperience({ initialFormState, formDefaults, viewerPlanId }: SearchExperienceProps) {
+  const router = useRouter();
   const [state, setState] = useState<SearchCardState | null>(initialFormState);
   const stateRef = useRef<SearchCardState | null>(initialFormState);
   const [isPending, startTransition] = useTransition();
@@ -112,6 +114,16 @@ export function SearchExperience({ initialFormState, formDefaults, viewerPlanId 
           void (async () => {
             const next = await searchCardStateAction(stateRef.current, formData);
             setState(next);
+            const name = String(formData.get("name") ?? "").trim();
+            if (name) {
+              const qs = buildSearchQueryStringFromFields({
+                name,
+                setName: String(formData.get("setName") ?? ""),
+                cardNumber: String(formData.get("cardNumber") ?? ""),
+                condition: String(formData.get("condition") ?? "raw_nm"),
+              });
+              if (qs) router.replace(`/search?${qs}`, { scroll: false });
+            }
           })();
         });
       }}

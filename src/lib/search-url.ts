@@ -23,3 +23,26 @@ export function searchDefaultsFromUrlParams(
     condition: normalizeConditionBucket(conditionRaw),
   };
 }
+
+/**
+ * Keeps the URL aligned with the last submitted search so `/search` RSC `searchParams` and `experienceKey`
+ * match the form (fixes typo-corrected queries without a full navigation).
+ */
+export function buildSearchQueryStringFromFields(fields: {
+  name: string;
+  setName?: string | null;
+  cardNumber?: string | null;
+  condition?: string | null;
+}): string {
+  const name = fields.name.trim();
+  if (!name) return "";
+  const params = new URLSearchParams();
+  params.set("name", name);
+  const setName = (fields.setName ?? "").trim();
+  if (setName) params.set("setName", setName);
+  const cardNumber = (fields.cardNumber ?? "").trim();
+  if (cardNumber) params.set("cardNumber", cardNumber);
+  const condition = normalizeConditionBucket((fields.condition ?? "raw_nm").trim() || "raw_nm");
+  if (condition && condition !== "raw_nm") params.set("condition", condition);
+  return params.toString();
+}
