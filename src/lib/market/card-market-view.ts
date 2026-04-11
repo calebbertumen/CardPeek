@@ -20,7 +20,10 @@ export type CardMarketView = {
   listingsCount: number;
   lastUpdated: Date;
   isStale: boolean;
+  /** Background scrape queued/in-flight — client may poll for fresher cache. */
   isRefreshing: boolean;
+  /** Show “Fetching latest sold listings…” only when this request created a new scrape job. */
+  showFetchingBanner: boolean;
   /** When the last Apify run failed; estimate may still reflect an older successful scrape. */
   lastScrapeError?: string | null;
   /** Keyword sent to eBay / Apify for the cached sold snapshot (same string as the link we build for “search on eBay”). */

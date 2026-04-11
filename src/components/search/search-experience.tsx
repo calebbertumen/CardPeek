@@ -44,7 +44,7 @@ function ResultsSection({ state, pending }: { state: SearchCardState | null; pen
       <div className="mt-10 rounded-2xl border border-border/80 bg-card p-6 shadow-lg shadow-black/25 sm:p-8">
         <div className="space-y-2">
           <p className="text-sm font-medium text-foreground">Data not available yet</p>
-          {state.isRefreshing ? (
+          {state.showFetchingBanner ? (
             <p className="text-sm font-medium text-foreground" role="status" aria-live="polite">
               Fetching latest sold listings…
             </p>

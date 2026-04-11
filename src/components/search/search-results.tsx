@@ -34,7 +34,7 @@ export function SearchResults({ data, tier }: Props) {
         <p className="text-sm text-muted-foreground">
           Based on recent market sales. Updated automatically when needed. Data may not reflect real-time listings.
         </p>
-        {data.isRefreshing ? (
+        {data.showFetchingBanner ? (
           <p className="text-sm font-medium text-foreground" role="status" aria-live="polite">
             Fetching latest sold listings…
           </p>
@@ -80,13 +80,15 @@ export function SearchResults({ data, tier }: Props) {
             {data.card.cardNumber ? (
               <p className="text-sm text-muted-foreground">#{data.card.cardNumber}</p>
             ) : null}
-            {data.isRefreshing || data.isStale ? (
+            {data.showFetchingBanner ? (
               <p className="mt-2 text-xs text-muted-foreground">
-                {data.isRefreshing
-                  ? "We’re updating comps in the background; numbers below may refresh shortly."
-                  : tier === "collector"
-                    ? "Showing saved results while we refresh."
-                    : "Showing cached market data. Updates refresh automatically when needed (typically within 24–72 hours)."}
+                We&apos;re updating comps in the background; numbers below may refresh shortly.
+              </p>
+            ) : data.isStale ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                {tier === "collector"
+                  ? "These numbers are from our last saved market snapshot for this card."
+                  : "Showing cached market data. Updates refresh automatically when needed (typically within 24–72 hours)."}
               </p>
             ) : null}
           </div>

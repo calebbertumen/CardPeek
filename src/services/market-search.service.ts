@@ -41,7 +41,10 @@ export type MarketSearchResult =
         listingsCount: number;
         lastUpdated: Date;
         isStale: boolean;
+        /** True while cache is stale and a sold scrape is queued or in-flight (drives polling / worker kick). */
         isRefreshing: boolean;
+        /** True only when this request created a new scrape job — show “Fetching…” UI (not for duplicate already-queued jobs). */
+        showFetchingBanner: boolean;
         lastScrapeError?: string | null;
         ebaySearchKeyword: string | null;
         freeUpdatedLookups: null | { limit: number; used: number; remaining: number };
@@ -70,8 +73,10 @@ export type MarketSearchResult =
         normalizedCardKey: string;
       };
       conditionBucket: ConditionBucket;
-      /** Whether a background market update was queued (Collector or Starter hidden allowance). */
+      /** Background scrape queued or in-flight (poll until cache fills). */
       isRefreshing: boolean;
+      /** Show prominent “Fetching…” only when this request created a new job. */
+      showFetchingBanner: boolean;
       blockedReason?: "FREE_LIFETIME_SCRAPE_LIMIT";
       freeUpdatedLookups?: { limit: number; used: number; remaining: number };
     };
@@ -124,6 +129,7 @@ export async function searchCardMarketData(input: {
       },
       conditionBucket,
       isRefreshing: false,
+      showFetchingBanner: false,
     };
   }
 
@@ -142,7 +148,8 @@ export async function searchCardMarketData(input: {
   const isFresh = existing ? now - existing.lastScrapedAt.getTime() < ttlMs : false;
   const isStale = existing ? !isFresh : true;
 
-  /** True only when a sold scrape was queued or already pending for this cache key (not merely stale). */
+  let collectorDidQueueNew = false;
+  /** True when a sold scrape is queued or already pending for this cache key. */
   let scrapeRefreshPending = false;
   if (isStale && input.entitlements.canTriggerRefresh) {
     logSoldScrapeMetric({
@@ -151,33 +158,37 @@ export async function searchCardMarketData(input: {
       cacheKey,
       normalizedQuery: cacheKey,
     });
-    const queued = await queueScrapeRefreshIfNeeded({
+    const collectorQueueResult = await queueScrapeRefreshIfNeeded({
       cardId: card.id,
       conditionBucket,
       cacheKey,
       requestedByUserId: userId,
       priority: COLLECTOR_QUEUE_PRIORITY,
     });
-    scrapeRefreshPending = queued.didQueue || queued.alreadyQueued;
+    collectorDidQueueNew = collectorQueueResult.didQueue;
+    scrapeRefreshPending = collectorQueueResult.didQueue || collectorQueueResult.alreadyQueued;
   }
 
   // Starter: allow up to 3 lifetime updated lookups (scrape runs) when cache is missing or stale.
+  let starterDidQueueNew = false;
   let starterScrapePending = false;
   if (isStale && tier === "starter" && userId) {
     const entitlement = await getFreshScrapeEntitlementForUser({ tier, userId });
     if (entitlement.allowed) {
-      const queued = await queueStarterFreshScrapeIfAllowed({
+      const starterQueueResult = await queueStarterFreshScrapeIfAllowed({
         userId,
         cardId: card.id,
         conditionBucket,
         cacheKey,
         priority: STARTER_QUEUE_PRIORITY,
       });
-      starterScrapePending = queued.kind === "queued" || queued.kind === "already_queued";
+      starterDidQueueNew = starterQueueResult.kind === "queued";
+      starterScrapePending =
+        starterQueueResult.kind === "queued" || starterQueueResult.kind === "already_queued";
     }
   }
 
-  const isRefreshing = scrapeRefreshPending || starterScrapePending;
+  const backgroundRefreshPending = scrapeRefreshPending || starterScrapePending;
 
   const cacheStatus: "hit" | "stale" | "miss" = !existing ? "miss" : isFresh ? "hit" : "stale";
   logCachePolicyDecision({
@@ -186,8 +197,10 @@ export async function searchCardMarketData(input: {
     ttlHours: policy.ttlHours,
     reasons: policy.reasons,
     cacheStatus,
-    refreshTriggered: isRefreshing,
+    refreshTriggered: backgroundRefreshPending,
   });
+
+  const showFetchingBannerNoCache = collectorDidQueueNew || starterDidQueueNew;
 
   if (!existing) {
     if (input.entitlements.canTriggerRefresh) {
@@ -203,13 +216,14 @@ export async function searchCardMarketData(input: {
           normalizedCardKey: card.normalizedCardKey,
         },
         conditionBucket,
-        isRefreshing,
+        isRefreshing: backgroundRefreshPending,
+        showFetchingBanner: showFetchingBannerNoCache,
       };
     } else if (tier === "starter" && userId) {
       // Run the worker before re-checking entitlements: queueing a refresh reserves a credit, so
       // `remaining` can be 0 until the job consumes or refunds. Otherwise we'd return FREE_LIFETIME_SCRAPE_LIMIT
       // without ever running the worker — leaving `ScrapeJob` pending and `freeLifetimeUpdatedLookupsReserved` stuck.
-      if (isRefreshing) {
+      if (backgroundRefreshPending) {
         await processPendingScrapeJobs({ limit: 1 });
         await waitForFreshSoldCache({ cacheKey, ttlMs });
         existing = await prisma.cardCache.findUnique({
@@ -239,6 +253,7 @@ export async function searchCardMarketData(input: {
           },
           conditionBucket,
           isRefreshing: false,
+          showFetchingBanner: false,
           blockedReason: "FREE_LIFETIME_SCRAPE_LIMIT",
           freeUpdatedLookups: counts,
         };
@@ -257,7 +272,8 @@ export async function searchCardMarketData(input: {
             normalizedCardKey: card.normalizedCardKey,
           },
           conditionBucket,
-          isRefreshing,
+          isRefreshing: backgroundRefreshPending,
+          showFetchingBanner: showFetchingBannerNoCache,
         };
       }
     } else {
@@ -274,6 +290,7 @@ export async function searchCardMarketData(input: {
         },
         conditionBucket,
         isRefreshing: false,
+        showFetchingBanner: false,
       };
     }
   }
@@ -286,7 +303,9 @@ export async function searchCardMarketData(input: {
   const nowOk = Date.now();
   const cacheIsFresh = nowOk - existing.lastScrapedAt.getTime() < ttlMs;
   const isStaleFinal = !cacheIsFresh;
-  const isRefreshingFinal = cacheIsFresh ? false : isRefreshing;
+  const isRefreshingFinal = cacheIsFresh ? false : backgroundRefreshPending;
+  const showFetchingBannerFinal =
+    cacheIsFresh ? false : collectorDidQueueNew || starterDidQueueNew;
 
   const starterCounts =
     tier === "starter" && userId
@@ -353,6 +372,7 @@ export async function searchCardMarketData(input: {
       lastUpdated: existing.lastScrapedAt,
       isStale: isStaleFinal,
       isRefreshing: isRefreshingFinal,
+      showFetchingBanner: showFetchingBannerFinal,
       lastScrapeError: existing.lastScrapeError,
       ebaySearchKeyword: existing.ebaySearchKeyword ?? null,
       freeUpdatedLookups,
