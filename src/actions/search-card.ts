@@ -54,6 +54,13 @@ export async function searchCardStateAction(
   return searchCardAction(formData, { debitAnonymousQuota: true });
 }
 
+/**
+ * Re-run the same search without debiting preview/daily quotas — used to pick up completed background scrapes.
+ */
+export async function pollCardSearchAction(formData: FormData): Promise<SearchCardState> {
+  return searchCardAction(formData, { debitAnonymousQuota: false });
+}
+
 type SearchCardActionOptions = {
   /**
    * When false, a successful search does not increment anonymous usage (SSR / ?name= loads).

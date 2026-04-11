@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { searchCardStateAction, type SearchCardState } from "@/actions/search-card";
+import { pollCardSearchAction, searchCardStateAction, type SearchCardState } from "@/actions/search-card";
 import { buildSearchQueryStringFromFields, type SearchPageFormDefaults } from "@/lib/search-url";
 import { Button } from "@/components/ui/button";
 import { CardSearchFields } from "@/components/search/card-search-fields";
@@ -119,6 +119,33 @@ export function SearchExperience({ initialFormState, formDefaults, viewerPlanId 
   const kickEnabled =
     (state?.ok === true && state.data.isRefreshing) ||
     (state?.ok === false && state.code === "NO_DATA" && state.isRefreshing === true);
+
+  const pollWhileRefreshing = useMemo(() => {
+    if (!state) return false;
+    if (state.ok) return state.data.isRefreshing;
+    if (state.code === "NO_DATA") return state.isRefreshing === true;
+    return false;
+  }, [state]);
+
+  useEffect(() => {
+    if (!pollWhileRefreshing) return;
+    const tick = () => {
+      if (!formRef.current) return;
+      void pollCardSearchAction(new FormData(formRef.current)).then((next) => {
+        setState(next);
+      });
+    };
+    const first = setTimeout(tick, 2000);
+    const interval = setInterval(tick, 3000);
+    const max = setTimeout(() => {
+      clearInterval(interval);
+    }, 120_000);
+    return () => {
+      clearTimeout(first);
+      clearInterval(interval);
+      clearTimeout(max);
+    };
+  }, [pollWhileRefreshing]);
 
   useEffect(() => {
     if (state?.ok === false && state.code === "VALIDATION") {

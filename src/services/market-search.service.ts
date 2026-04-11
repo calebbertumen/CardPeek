@@ -142,7 +142,8 @@ export async function searchCardMarketData(input: {
   const isFresh = existing ? now - existing.lastScrapedAt.getTime() < ttlMs : false;
   const isStale = existing ? !isFresh : true;
 
-  let isRefreshing = false;
+  /** True only when a sold scrape was queued or already pending for this cache key (not merely stale). */
+  let scrapeRefreshPending = false;
   if (isStale && input.entitlements.canTriggerRefresh) {
     logSoldScrapeMetric({
       event: "apify_ebay_sold",
@@ -157,10 +158,11 @@ export async function searchCardMarketData(input: {
       requestedByUserId: userId,
       priority: COLLECTOR_QUEUE_PRIORITY,
     });
-    isRefreshing = queued.didQueue || queued.alreadyQueued;
+    scrapeRefreshPending = queued.didQueue || queued.alreadyQueued;
   }
 
   // Starter: allow up to 3 lifetime updated lookups (scrape runs) when cache is missing or stale.
+  let starterScrapePending = false;
   if (isStale && tier === "starter" && userId) {
     const entitlement = await getFreshScrapeEntitlementForUser({ tier, userId });
     if (entitlement.allowed) {
@@ -171,9 +173,11 @@ export async function searchCardMarketData(input: {
         cacheKey,
         priority: STARTER_QUEUE_PRIORITY,
       });
-      isRefreshing = queued.kind === "queued" || queued.kind === "already_queued";
+      starterScrapePending = queued.kind === "queued" || queued.kind === "already_queued";
     }
   }
+
+  const isRefreshing = scrapeRefreshPending || starterScrapePending;
 
   const cacheStatus: "hit" | "stale" | "miss" = !existing ? "miss" : isFresh ? "hit" : "stale";
   logCachePolicyDecision({
