@@ -232,9 +232,8 @@ export function SetNameCombobox({
               left: menuBox.left,
               width: menuBox.width,
               maxHeight: menuBox.maxHeight,
-              overflow: "auto",
             }}
-            className="z-[300] rounded-lg border border-border bg-popover py-1 text-popover-foreground shadow-lg shadow-black/50"
+            className="z-[300] touch-pan-y overflow-x-hidden overflow-y-auto overscroll-x-contain rounded-lg border border-border bg-popover py-1 text-popover-foreground shadow-lg shadow-black/50"
           >
             {listRows.map((row, idx) => (
               <li
@@ -243,7 +242,7 @@ export function SetNameCombobox({
                 aria-selected={!row.disabled && idx === highlighted}
                 aria-disabled={row.disabled}
                 className={cn(
-                  "px-3 py-2 text-sm",
+                  "break-words px-3 py-2 text-sm",
                   row.disabled
                     ? "cursor-default text-muted-foreground"
                     : "cursor-pointer",

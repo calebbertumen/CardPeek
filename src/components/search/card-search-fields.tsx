@@ -51,8 +51,8 @@ export function CardSearchFields({
 
   return (
     <>
-      <div className="flex w-full min-w-0 flex-nowrap items-end gap-2 overflow-x-auto pb-0.5 sm:gap-3 md:overflow-visible">
-        <div className="min-w-[min(100%,8rem)] flex-[2] space-y-1.5 sm:min-w-0">
+      <div className="flex w-full min-w-0 flex-col items-stretch gap-3 pb-0.5 sm:flex-row sm:flex-nowrap sm:items-end sm:gap-3 sm:overflow-x-auto md:overflow-visible">
+        <div className="w-full min-w-0 flex-[2] space-y-1.5 sm:min-w-0">
           <Label htmlFor={pid("name")} className="text-xs">
             Card name
           </Label>
@@ -66,7 +66,7 @@ export function CardSearchFields({
             defaultValue={defaults.name}
           />
         </div>
-        <div className="min-w-[min(100%,5.5rem)] flex-1 space-y-1.5 sm:min-w-0">
+        <div className="w-full min-w-0 flex-1 space-y-1.5 sm:min-w-0">
           <Label htmlFor={pid("setName")} className="text-xs">
             Set name
           </Label>
@@ -78,7 +78,7 @@ export function CardSearchFields({
             placeholder="Type or pick a set"
           />
         </div>
-        <div className="w-[4.25rem] shrink-0 space-y-1.5 sm:w-20">
+        <div className="w-full shrink-0 space-y-1.5 sm:w-20">
           <Label htmlFor={pid("cardNumber")} className="text-xs">
             No.
           </Label>
@@ -91,7 +91,7 @@ export function CardSearchFields({
             defaultValue={defaults.cardNumber}
           />
         </div>
-        <div className="w-[min(100%,10.5rem)] shrink-0 space-y-1.5 sm:w-44">
+        <div className="w-full shrink-0 space-y-1.5 sm:w-44">
           <div className="flex min-h-[1rem] items-center gap-1">
             <Label htmlFor={pid("condition-select")} className="text-xs">
               Condition
@@ -145,7 +145,9 @@ export function CardSearchFields({
             </div>
           )}
         </div>
-        <div className="flex shrink-0 items-end justify-center">{actionsSlot}</div>
+        <div className="flex w-full shrink-0 items-stretch justify-center sm:w-auto sm:items-end [&_button]:w-full sm:[&_button]:w-auto">
+          {actionsSlot}
+        </div>
       </div>
       <input type="hidden" name="condition" value={condition} readOnly aria-hidden />
     </>
