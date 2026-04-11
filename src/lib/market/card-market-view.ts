@@ -33,7 +33,6 @@ export type CardMarketView = {
     soldPrice: number;
     soldDate: Date;
     listingUrl: string;
-    imageUrl: string | null;
     conditionLabel: string | null;
     gradeLabel: string | null;
     rawOrGraded: string | null;

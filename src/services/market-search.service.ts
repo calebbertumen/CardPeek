@@ -7,7 +7,6 @@ import { queueScrapeRefreshIfNeeded } from "@/services/scrape-queue.service";
 import { logSoldScrapeMetric } from "@/services/apify/scrape-metrics";
 import { waitForFreshSoldCache } from "@/services/sold-cache-wait.service";
 import { processPendingScrapeJobs } from "@/services/scrape-worker.service";
-import { enrichSoldListingImages } from "@/lib/ebay/enrich-listing-images";
 import { computeDisplayedAveragePrice } from "@/lib/pricing/compute-displayed-average-price";
 import {
   getFreshScrapeEntitlementForUser,
@@ -52,7 +51,6 @@ export type MarketSearchResult =
           soldPrice: number;
           soldDate: Date;
           listingUrl: string;
-          imageUrl: string | null;
           conditionLabel: string | null;
           gradeLabel: string | null;
           rawOrGraded: string | null;
@@ -187,21 +185,6 @@ export async function searchCardMarketData(input: {
     refreshTriggered: isRefreshing,
   });
 
-  // Run the worker in-request for Collector whenever we need new sold data (no row yet, or stale).
-  // Without this, only RefreshKick hits /api/jobs/process-scrapes — stale rows never ran inline.
-  if (
-    isRefreshing &&
-    input.entitlements.canTriggerRefresh &&
-    (!existing || !isFresh)
-  ) {
-    await processPendingScrapeJobs({ limit: 1 });
-    await waitForFreshSoldCache({ cacheKey, ttlMs });
-    existing = await prisma.cardCache.findUnique({
-      where: { cacheKey },
-      include: { listings: true },
-    });
-  }
-
   if (!existing) {
     if (input.entitlements.canTriggerRefresh) {
       return {
@@ -323,23 +306,20 @@ export async function searchCardMarketData(input: {
     .sort((a, b) => a.position - b.position)
     .slice(0, input.entitlements.recentSalesVisibleCount);
 
-  const listingsBase = visible.map((l) => ({
-    title: l.title,
-    source: l.source,
-    soldPrice: Number(l.soldPrice),
-    soldDate: l.soldDate,
-    listingUrl: l.listingUrl,
-    imageUrl: l.imageUrl,
-    conditionLabel: l.conditionLabel,
-    gradeLabel: l.gradeLabel,
-    rawOrGraded: l.rawOrGraded,
-    position: l.position,
-  }));
-
   const listings =
     input.entitlements.recentSalesVisibleCount > 0
-      ? await enrichSoldListingImages(listingsBase)
-      : listingsBase;
+      ? visible.map((l) => ({
+          title: l.title,
+          source: l.source,
+          soldPrice: Number(l.soldPrice),
+          soldDate: l.soldDate,
+          listingUrl: l.listingUrl,
+          conditionLabel: l.conditionLabel,
+          gradeLabel: l.gradeLabel,
+          rawOrGraded: l.rawOrGraded,
+          position: l.position,
+        }))
+      : [];
 
   const pricing = computeDisplayedAveragePrice(existing.listings.map((l) => Number(l.soldPrice)));
   const avgExcludedPrices =

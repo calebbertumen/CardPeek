@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { searchCardStateAction, type SearchCardState } from "@/actions/search-card";
 import { buildSearchQueryStringFromFields, type SearchPageFormDefaults } from "@/lib/search-url";
 import { Button } from "@/components/ui/button";
 import { CardSearchFields } from "@/components/search/card-search-fields";
 import { searchBarWidthClassName } from "@/components/search/search-bar-layout";
 import { SearchBarShell } from "@/components/search/search-bar-shell";
+import { RefreshKick } from "./refresh-kick";
 import { SearchResults } from "./search-results";
 import { SearchResultsSkeleton } from "./search-results-skeleton";
 
@@ -43,6 +44,11 @@ function ResultsSection({ state, pending }: { state: SearchCardState | null; pen
       <div className="mt-10 rounded-2xl border border-border/80 bg-card p-6 shadow-lg shadow-black/25 sm:p-8">
         <div className="space-y-2">
           <p className="text-sm font-medium text-foreground">Data not available yet</p>
+          {state.isRefreshing ? (
+            <p className="text-sm font-medium text-foreground" role="status" aria-live="polite">
+              Fetching latest sold listings…
+            </p>
+          ) : null}
           <p className="text-sm text-muted-foreground">{state.message}</p>
           {t === "preview" ? (
             <p className="text-sm text-muted-foreground">
@@ -98,7 +104,21 @@ export function SearchExperience({ initialFormState, formDefaults, viewerPlanId 
   const [isPending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
 
+  const initialFingerprint = useMemo(
+    () => JSON.stringify(initialFormState, (_, v) => (v instanceof Date ? v.toISOString() : v)),
+    [initialFormState],
+  );
+
+  useEffect(() => {
+    setState(initialFormState);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only adopt server state when serialized payload changes (e.g. after router.refresh)
+  }, [initialFingerprint]);
+
   stateRef.current = state;
+
+  const kickEnabled =
+    (state?.ok === true && state.data.isRefreshing) ||
+    (state?.ok === false && state.code === "NO_DATA" && state.isRefreshing === true);
 
   useEffect(() => {
     if (state?.ok === false && state.code === "VALIDATION") {
@@ -129,6 +149,7 @@ export function SearchExperience({ initialFormState, formDefaults, viewerPlanId 
       }}
       className="flex w-full flex-col"
     >
+      <RefreshKick enabled={kickEnabled} />
       {/* Search strip under the header; scrolls with the page (not sticky) */}
       <div className="w-full border-b border-border/60 bg-background/95 backdrop-blur-md">
         <div className="w-full py-4 sm:py-5">

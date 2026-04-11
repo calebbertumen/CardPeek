@@ -7,7 +7,6 @@ import {
 } from "@/lib/search/sold-search-query";
 import { ListingCards } from "./listing-cards";
 import { PricingSummary } from "./pricing-summary";
-import { RefreshKick } from "./refresh-kick";
 import type { AccessTier } from "@/lib/billing/access";
 
 type Props = {
@@ -30,12 +29,16 @@ export function SearchResults({ data, tier }: Props) {
 
   return (
     <div className="mt-12 space-y-10">
-      <RefreshKick enabled={data.isRefreshing} />
       <div className="flex flex-col gap-2">
         <h2 className="text-lg font-semibold tracking-tight">Results</h2>
         <p className="text-sm text-muted-foreground">
           Based on recent market sales. Updated automatically when needed. Data may not reflect real-time listings.
         </p>
+        {data.isRefreshing ? (
+          <p className="text-sm font-medium text-foreground" role="status" aria-live="polite">
+            Fetching latest sold listings…
+          </p>
+        ) : null}
         {tier === "starter" && data.freeUpdatedLookups ? (
           <p className="text-xs text-muted-foreground">
             <span className="font-medium text-foreground">
@@ -80,7 +83,7 @@ export function SearchResults({ data, tier }: Props) {
             {data.isRefreshing || data.isStale ? (
               <p className="mt-2 text-xs text-muted-foreground">
                 {data.isRefreshing
-                  ? "Refreshing market data (in background)."
+                  ? "We’re updating comps in the background; numbers below may refresh shortly."
                   : tier === "collector"
                     ? "Showing saved results while we refresh."
                     : "Showing cached market data. Updates refresh automatically when needed (typically within 24–72 hours)."}

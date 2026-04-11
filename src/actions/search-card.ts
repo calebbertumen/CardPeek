@@ -42,6 +42,8 @@ export type SearchCardState =
       message: string;
       /** Set for daily search limit responses so the UI can show tier-accurate copy. */
       tier?: AccessTier;
+      /** When a background scrape was queued but data is not ready yet (NO_DATA). */
+      isRefreshing?: boolean;
     };
 
 /** For `useFormState` — passes through to {@link searchCardAction}. */
@@ -156,6 +158,7 @@ export async function searchCardAction(
           tier: "starter",
           message:
             "We don’t have data for this card right now. Try another search, or upgrade to Collector for unlimited searches and unlimited access to updated market data.",
+          isRefreshing: result.isRefreshing,
         };
       }
       return {
@@ -164,6 +167,7 @@ export async function searchCardAction(
         tier: "collector",
         message:
           "We’re preparing market data for this card. Check back shortly—listings are updated regularly and may not reflect real-time results.",
+        isRefreshing: result.isRefreshing,
       };
     }
 

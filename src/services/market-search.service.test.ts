@@ -57,9 +57,6 @@ vi.mock("@/services/card-search-activity.service", () => ({
   }),
   recordCardSearchEvent: vi.fn(),
 }));
-vi.mock("@/lib/ebay/enrich-listing-images", () => ({
-  enrichSoldListingImages: async (rows: unknown) => rows,
-}));
 
 describe("searchCardMarketData (lifetime updated lookups)", () => {
   beforeEach(() => {
@@ -98,7 +95,6 @@ describe("searchCardMarketData (lifetime updated lookups)", () => {
           soldPrice: 10,
           soldDate: new Date(),
           listingUrl: "",
-          imageUrl: null,
           conditionLabel: null,
           gradeLabel: null,
           rawOrGraded: null,
