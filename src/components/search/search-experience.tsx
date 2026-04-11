@@ -91,6 +91,22 @@ function ResultsSection({ state, pending }: { state: SearchCardState | null; pen
   return null;
 }
 
+type SearchFieldsSnapshot = {
+  name: string;
+  setName: string;
+  cardNumber: string;
+  condition: string;
+};
+
+function formDataFromSnapshot(s: SearchFieldsSnapshot): FormData {
+  const fd = new FormData();
+  fd.set("name", s.name);
+  fd.set("setName", s.setName);
+  fd.set("cardNumber", s.cardNumber);
+  fd.set("condition", s.condition);
+  return fd;
+}
+
 type SearchExperienceProps = {
   initialFormState: SearchCardState | null;
   formDefaults: SearchPageFormDefaults;
@@ -103,6 +119,13 @@ export function SearchExperience({ initialFormState, formDefaults, viewerPlanId 
   const stateRef = useRef<SearchCardState | null>(initialFormState);
   const [isPending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
+  /** Last URL-aligned or explicitly submitted search — background poll must not read live inputs while the user is typing. */
+  const lastSubmittedSearchRef = useRef<SearchFieldsSnapshot>({
+    name: formDefaults.name,
+    setName: formDefaults.setName,
+    cardNumber: formDefaults.cardNumber,
+    condition: formDefaults.condition,
+  });
 
   const initialFingerprint = useMemo(
     () => JSON.stringify(initialFormState, (_, v) => (v instanceof Date ? v.toISOString() : v)),
@@ -111,6 +134,12 @@ export function SearchExperience({ initialFormState, formDefaults, viewerPlanId 
 
   useEffect(() => {
     setState(initialFormState);
+    lastSubmittedSearchRef.current = {
+      name: formDefaults.name,
+      setName: formDefaults.setName,
+      cardNumber: formDefaults.cardNumber,
+      condition: formDefaults.condition,
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only adopt server state when serialized payload changes (e.g. after router.refresh)
   }, [initialFingerprint]);
 
@@ -130,8 +159,7 @@ export function SearchExperience({ initialFormState, formDefaults, viewerPlanId 
   useEffect(() => {
     if (!pollWhileRefreshing) return;
     const tick = () => {
-      if (!formRef.current) return;
-      void pollCardSearchAction(new FormData(formRef.current)).then((next) => {
+      void pollCardSearchAction(formDataFromSnapshot(lastSubmittedSearchRef.current)).then((next) => {
         setState(next);
       });
     };
@@ -159,9 +187,15 @@ export function SearchExperience({ initialFormState, formDefaults, viewerPlanId 
       action={(formData) => {
         startTransition(() => {
           void (async () => {
+            lastSubmittedSearchRef.current = {
+              name: String(formData.get("name") ?? "").trim(),
+              setName: String(formData.get("setName") ?? "").trim(),
+              cardNumber: String(formData.get("cardNumber") ?? "").trim(),
+              condition: String(formData.get("condition") ?? "raw_nm"),
+            };
             const next = await searchCardStateAction(stateRef.current, formData);
             setState(next);
-            const name = String(formData.get("name") ?? "").trim();
+            const name = lastSubmittedSearchRef.current.name;
             if (name) {
               const qs = buildSearchQueryStringFromFields({
                 name,
