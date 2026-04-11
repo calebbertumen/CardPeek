@@ -34,12 +34,17 @@ export async function SiteHeader() {
               >
                 Dashboard
               </Link>
-              <form action={signOutAction} className="inline">
+              <form action={signOutAction} className="inline shrink-0">
                 <Button type="submit" variant="ghost" size="sm" className="hidden md:inline-flex">
                   Sign out
                 </Button>
-                <Button type="submit" variant="outline" size="sm" className="md:hidden">
-                  Out
+                <Button
+                  type="submit"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 whitespace-nowrap px-2.5 text-xs sm:px-3 sm:text-sm md:hidden"
+                >
+                  Sign out
                 </Button>
               </form>
             </>

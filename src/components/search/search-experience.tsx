@@ -129,8 +129,8 @@ export function SearchExperience({ initialFormState, formDefaults, viewerPlanId 
       }}
       className="flex w-full flex-col"
     >
-      {/* Full viewport-width search strip, directly under the site header */}
-      <div className="sticky top-14 z-30 w-full border-b border-border/60 bg-background/95 backdrop-blur-md sm:top-16">
+      {/* Search strip under the header; scrolls with the page (not sticky) */}
+      <div className="w-full border-b border-border/60 bg-background/95 backdrop-blur-md">
         <div className="w-full py-4 sm:py-5">
           <div className={searchBarWidthClassName}>
             <SearchBarShell
