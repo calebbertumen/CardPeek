@@ -1,11 +1,12 @@
 "use server";
 
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { auth } from "@/lib/auth";
 import {
   ANONYMOUS_COOKIE,
 } from "@/lib/constants";
-import { searchDefaultsFromUrlParams } from "@/lib/search-url";
+import { searchDefaultsFromUrlParams, type SearchPageFormDefaults } from "@/lib/search-url";
 import { normalizeConditionBucket } from "@/lib/normalize";
 import { getUserPlanId } from "@/lib/billing/get-user-plan";
 import type { AccessTier } from "@/lib/billing/access";
@@ -15,25 +16,6 @@ import { enforceAndRecordDailySearch } from "@/services/search-usage.service";
 import { enforceAndRecordPreviewSearch } from "@/services/preview-usage.service";
 import { releaseOrphanedStarterReservation } from "@/services/fresh-scrape-usage.service";
 import type { ConditionBucket } from "@prisma/client";
-
-/** Run the same search as the form when the user lands with `?name=…` query (e.g. from the home page). */
-export async function searchFromUrlParams(
-  searchParams: Record<string, string | string[] | undefined>,
-): Promise<SearchCardState | null> {
-  const defaults = searchDefaultsFromUrlParams(searchParams);
-  const name = defaults.name.trim();
-  if (!name) return null;
-  const fd = new FormData();
-  fd.set("name", name);
-  fd.set("setName", defaults.setName);
-  fd.set("cardNumber", defaults.cardNumber);
-  fd.set("condition", defaults.condition);
-  /**
-   * Preview quota is charged only when the response shows cached market data (`ok`). Logged-out users sync the
-   * URL after submit via `history.replaceState` so we do not double-run a charged search.
-   */
-  return searchCardAction(fd, { debitAnonymousQuota: true });
-}
 
 type MarketSearchOk = Extract<Awaited<ReturnType<typeof searchCardMarketData>>, { kind: "ok" }>;
 
@@ -200,4 +182,30 @@ export async function searchCardAction(
       message: "Something went wrong. Please try again.",
     };
   }
+}
+
+/**
+ * Same URL query can be evaluated twice in one RSC request (e.g. React Strict Mode). Without deduplication,
+ * `searchCardAction` would run twice and preview usage would increment twice for a single page load.
+ */
+const runSearchFromUrlParamsDeduped = cache(
+  async (defaultsKey: string): Promise<SearchCardState | null> => {
+    const defaults = JSON.parse(defaultsKey) as SearchPageFormDefaults;
+    if (!defaults.name.trim()) return null;
+    const fd = new FormData();
+    fd.set("name", defaults.name);
+    fd.set("setName", defaults.setName);
+    fd.set("cardNumber", defaults.cardNumber);
+    fd.set("condition", defaults.condition);
+    return searchCardAction(fd, { debitAnonymousQuota: true });
+  },
+);
+
+/** Run the same search as the form when the user lands with `?name=…` query (e.g. from the home page). */
+export async function searchFromUrlParams(
+  searchParams: Record<string, string | string[] | undefined>,
+): Promise<SearchCardState | null> {
+  const defaults = searchDefaultsFromUrlParams(searchParams);
+  if (!defaults.name.trim()) return null;
+  return runSearchFromUrlParamsDeduped(JSON.stringify(defaults));
 }
