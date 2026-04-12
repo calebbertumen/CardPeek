@@ -91,29 +91,9 @@ export function CardSearchFields({
           />
         </div>
         <div className="w-full shrink-0 space-y-1.5 sm:w-44">
-          <div className="flex min-h-[1rem] items-center gap-1">
-            <Label htmlFor={pid("condition-select")} className="text-xs">
-              Condition
-            </Label>
-            {viewerPlanId !== "collector" ? (
-              <div className="group relative inline-flex items-center">
-                <button
-                  type="button"
-                  tabIndex={0}
-                  className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-muted-foreground/45 text-[9px] font-semibold leading-none text-muted-foreground transition-colors hover:border-primary/55 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                  aria-label="Condition filters require Collector"
-                >
-                  i
-                </button>
-                <span
-                  role="tooltip"
-                  className="pointer-events-none absolute left-1/2 top-[calc(100%+6px)] z-[100] w-max max-w-[min(240px,calc(100vw-2rem))] -translate-x-1/2 rounded-md border border-border bg-popover px-2.5 py-1.5 text-[11px] leading-snug text-popover-foreground opacity-0 shadow-lg ring-1 ring-black/5 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
-                >
-                  Collector unlocks condition filters.
-                </span>
-              </div>
-            ) : null}
-          </div>
+          <Label htmlFor={pid("condition-select")} className="text-xs">
+            Condition
+          </Label>
           {viewerPlanId === "collector" ? (
             <Select
               value={condition}
@@ -133,13 +113,22 @@ export function CardSearchFields({
               </SelectContent>
             </Select>
           ) : (
-            <div
-              id={pid("condition-select")}
-              className="flex h-11 w-full min-w-0 max-w-full items-center rounded-lg border border-border bg-surface-alt px-2.5 text-sm text-foreground select-none"
-              title="Collector unlocks condition filters"
-            >
-              <span className="truncate">
-                {CONDITION_OPTIONS.find((o) => o.value === condition)?.label ?? condition}
+            <div className="group relative w-full">
+              <div
+                id={pid("condition-select")}
+                tabIndex={0}
+                className="flex h-11 w-full min-w-0 max-w-full cursor-default items-center rounded-lg border border-border bg-surface-alt px-2.5 text-sm text-foreground select-none outline-none transition-colors hover:border-border focus-visible:border-border focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                aria-label="Condition — Collector unlocks other condition filters"
+              >
+                <span className="truncate">
+                  {CONDITION_OPTIONS.find((o) => o.value === condition)?.label ?? condition}
+                </span>
+              </div>
+              <span
+                role="tooltip"
+                className="pointer-events-none absolute left-0 top-[calc(100%+6px)] z-[100] w-max max-w-[min(240px,calc(100vw-2rem))] rounded-md border border-border bg-popover px-2.5 py-1.5 text-[11px] leading-snug text-popover-foreground opacity-0 shadow-lg ring-1 ring-black/5 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+              >
+                Collector unlocks condition filters.
               </span>
             </div>
           )}
