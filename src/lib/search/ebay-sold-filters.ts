@@ -13,47 +13,30 @@ export function isLikelyGradedListingTitle(title: string): boolean {
   );
 }
 
-/** Title/label text that clearly indicates a different PSA grade than requested (cross-bucket guard). */
-function combinedImpliesConflictingPsaGrade(combined: string, bucket: ConditionBucket): boolean {
-  const t = combined;
-  const has10 = /\bPSA\s*10\b/i.test(t) || /\bPSA10\b/i.test(t) || /\bPSA-10\b/i.test(t);
-  const has9 = /\bPSA\s*9\b/i.test(t) || /\bPSA9\b/i.test(t) || /\bPSA-9\b/i.test(t);
-  const has8 = /\bPSA\s*8\b/i.test(t) || /\bPSA8\b/i.test(t) || /\bPSA-8\b/i.test(t);
-
-  if (bucket === "psa_10") {
-    if (has10) return false;
-    if (has9 || has8) return true;
+/** Every explicit `PSA <n>` mention in title + condition text. */
+function psaGradesInCombinedText(combined: string): number[] {
+  const out: number[] = [];
+  const re = /\bPSA\s*(\d{1,2})\b/gi;
+  let m;
+  while ((m = re.exec(combined)) !== null) {
+    const n = parseInt(m[1], 10);
+    if (Number.isFinite(n)) out.push(n);
   }
-  if (bucket === "psa_9") {
-    if (has9) return false;
-    if (has10 || has8) return true;
-  }
-  if (bucket === "psa_8") {
-    if (has8) return false;
-    if (has10 || has9) return true;
-  }
-  return false;
+  return out;
 }
 
-function keywordEncodesPsaBucket(keyword: string | null | undefined, bucket: ConditionBucket): boolean {
-  if (!keyword?.trim()) return false;
-  const k = keyword;
-  if (bucket === "psa_10") {
-    return (
-      /\bPSA\s*10\b/i.test(k) ||
-      /\bPSA10\b/i.test(k) ||
-      /\bPSA-10\b/i.test(k) ||
-      /\bGEM\s*MINT\s*10\b/i.test(k) ||
-      /\bGEM\s*MT\s*10\b/i.test(k)
-    );
-  }
-  if (bucket === "psa_9") {
-    return /\bPSA\s*9\b/i.test(k) || /\bPSA9\b/i.test(k) || /\bPSA-9\b/i.test(k);
-  }
-  if (bucket === "psa_8") {
-    return /\bPSA\s*8\b/i.test(k) || /\bPSA8\b/i.test(k) || /\bPSA-8\b/i.test(k);
-  }
-  return false;
+/** Non-PSA slabs — never treat as the user's PSA bucket. */
+function mentionsCompetitorGradingSlab(combined: string): boolean {
+  return /\bCGC\b/i.test(combined) || /\bBGS\b/i.test(combined) || /\bSGC\b/i.test(combined) || /\bBECKETT\b/i.test(combined);
+}
+
+function psaBucketExplicitGradesAreOnly(
+  combined: string,
+  allowed: number,
+): boolean {
+  const grades = psaGradesInCombinedText(combined);
+  if (grades.length === 0) return true;
+  return grades.every((g) => g === allowed);
 }
 
 function titleMatchesPsa10(combined: string): boolean {
@@ -77,40 +60,33 @@ function titleMatchesPsa8(combined: string): boolean {
 }
 
 /**
- * Keep sold rows that match the user's condition bucket (title-level heuristic).
- * Raw buckets drop slab listings; PSA buckets require that grade in the title/label, or — when the sold-search
- * keyword already encodes the grade — titles that do not contradict another PSA grade (eBay often truncates titles).
+ * Keep sold rows that match the user's condition bucket (title + condition label heuristics).
+ * PSA buckets require that grade (or Gem Mint 10 variants) in the listing text — we do **not** infer PSA from
+ * the search keyword alone (that let in wrong cards/grades when eBay broadened results).
  */
 export function soldListingTitleMatchesBucket(
   title: string,
   bucket: ConditionBucket,
   conditionLabel?: string | null,
-  searchKeyword?: string | null,
 ): boolean {
   const combined = `${title ?? ""} ${conditionLabel ?? ""}`.trim();
   if (bucket.startsWith("raw_")) {
     return !isLikelyGradedListingTitle(combined);
   }
   if (bucket === "psa_10") {
-    if (titleMatchesPsa10(combined)) return true;
-    if (keywordEncodesPsaBucket(searchKeyword, "psa_10") && !combinedImpliesConflictingPsaGrade(combined, "psa_10")) {
-      return true;
-    }
-    return false;
+    if (mentionsCompetitorGradingSlab(combined)) return false;
+    if (!titleMatchesPsa10(combined)) return false;
+    return psaBucketExplicitGradesAreOnly(combined, 10);
   }
   if (bucket === "psa_9") {
-    if (titleMatchesPsa9(combined)) return true;
-    if (keywordEncodesPsaBucket(searchKeyword, "psa_9") && !combinedImpliesConflictingPsaGrade(combined, "psa_9")) {
-      return true;
-    }
-    return false;
+    if (mentionsCompetitorGradingSlab(combined)) return false;
+    if (!titleMatchesPsa9(combined)) return false;
+    return psaBucketExplicitGradesAreOnly(combined, 9);
   }
   if (bucket === "psa_8") {
-    if (titleMatchesPsa8(combined)) return true;
-    if (keywordEncodesPsaBucket(searchKeyword, "psa_8") && !combinedImpliesConflictingPsaGrade(combined, "psa_8")) {
-      return true;
-    }
-    return false;
+    if (mentionsCompetitorGradingSlab(combined)) return false;
+    if (!titleMatchesPsa8(combined)) return false;
+    return psaBucketExplicitGradesAreOnly(combined, 8);
   }
   return true;
 }

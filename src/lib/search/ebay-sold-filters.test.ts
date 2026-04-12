@@ -39,14 +39,19 @@ describe("soldListingTitleMatchesBucket", () => {
     expect(soldListingTitleMatchesBucket("Charizard PSA-10", "psa_10")).toBe(true);
   });
 
-  it("psa_10 uses search keyword when title omits grade (eBay truncates)", () => {
-    const kw = "Blaine's Charizard Gym Challenge #2 PSA 10";
-    expect(soldListingTitleMatchesBucket("Blaine's Charizard Gym Challeng…", "psa_10", null, kw)).toBe(true);
+  it("psa_10 does not infer PSA 10 from search keyword when title omits grade", () => {
+    expect(soldListingTitleMatchesBucket("Blaine's Charizard Gym Challeng…", "psa_10", null)).toBe(false);
   });
 
-  it("psa_10 keyword fallback rejects a different PSA grade in title", () => {
-    const kw = "Blaine's Charizard Gym Challenge #2 PSA 10";
-    expect(soldListingTitleMatchesBucket("Charizard PSA 9 NM", "psa_10", null, kw)).toBe(false);
+  it("psa_10 rejects a different PSA grade in title", () => {
+    expect(soldListingTitleMatchesBucket("Charizard PSA 9 NM", "psa_10", null)).toBe(false);
+  });
+
+  it("psa_10 rejects CGC and non-10 PSA grades", () => {
+    expect(soldListingTitleMatchesBucket("CGC 6.5 Venusaur Pokemon Rumble", "psa_10")).toBe(false);
+    expect(soldListingTitleMatchesBucket("2009 POKEMON RUMBLE #10 MEW PSA 6", "psa_10")).toBe(false);
+    expect(soldListingTitleMatchesBucket("VENUSAUR PSA 7 Pokemon Rumble", "psa_10")).toBe(false);
+    expect(soldListingTitleMatchesBucket("Venusaur PSA 10 Gem Mint 2009 Rumble", "psa_10")).toBe(true);
   });
 });
 

@@ -17,7 +17,7 @@ describe("mapApifyEbaySoldItemsToListings", () => {
       url: `https://www.ebay.com/itm/${100000000000 + i}`,
       itemId: `${100000000000 + i}`,
     }));
-    const out = mapApifyEbaySoldItemsToListings(items, "test");
+    const out = mapApifyEbaySoldItemsToListings(items, "test", "raw_nm");
     expect(out.length).toBe(8);
     for (let i = 0; i < out.length - 1; i += 1) {
       expect(out[i]!.soldAt.getTime()).toBeGreaterThanOrEqual(out[i + 1]!.soldAt.getTime());
@@ -28,6 +28,7 @@ describe("mapApifyEbaySoldItemsToListings", () => {
     const out = mapApifyEbaySoldItemsToListings(
       [{ title: "x", soldPrice: 0, endedAt: new Date().toISOString(), url: "https://e.com" }],
       "test",
+      "raw_nm",
     );
     expect(out.length).toBe(0);
   });
@@ -44,6 +45,7 @@ describe("mapApifyEbaySoldItemsToListings", () => {
         },
       ],
       "test",
+      "raw_nm",
     );
     expect(out.length).toBe(1);
   });
@@ -61,6 +63,7 @@ describe("mapApifyEbaySoldItemsToListings", () => {
         },
       ],
       "test",
+      "raw_nm",
     );
     expect(out.length).toBe(1);
   });
@@ -84,8 +87,10 @@ describe("mapApifyEbaySoldItemsToListings", () => {
         },
       ],
       "test",
+      "raw_nm",
     );
-    expect(out.length).toBe(2);
+    // Graded PSA title is excluded from raw_nm; ungraded raw title remains.
+    expect(out.length).toBe(1);
   });
 
   it("dedupes by eBay item id and keeps the actor listing URL from the winning row", () => {
@@ -107,6 +112,7 @@ describe("mapApifyEbaySoldItemsToListings", () => {
         },
       ],
       "test",
+      "raw_nm",
     );
     expect(out.length).toBe(1);
     expect(out[0]!.itemUrl).toBe("https://www.ebay.com/itm/100000000099");
@@ -132,6 +138,7 @@ describe("mapApifyEbaySoldItemsToListings", () => {
         },
       ],
       "test",
+      "raw_nm",
     );
     expect(out.length).toBe(2);
   });
@@ -148,6 +155,7 @@ describe("mapApifyEbaySoldItemsToListings", () => {
         },
       ],
       "test",
+      "raw_nm",
     );
     expect(out.length).toBe(1);
     expect(out[0]!.itemUrl).toBeNull();
@@ -164,6 +172,7 @@ describe("mapApifyEbaySoldItemsToListings", () => {
         },
       ],
       "test",
+      "raw_nm",
     );
     expect(out.length).toBe(1);
     expect(out[0]!.itemUrl).toBeNull();
@@ -181,6 +190,7 @@ describe("mapApifyEbaySoldItemsToListings", () => {
         },
       ],
       "test",
+      "raw_nm",
     );
     expect(out.length).toBe(1);
     expect(out[0]!.itemUrl).toBe("https://www.ebay.com/itm/123456789012");
@@ -198,12 +208,13 @@ describe("mapApifyEbaySoldItemsToListings", () => {
         },
       ],
       "test",
+      "raw_nm",
     );
     expect(out.length).toBe(1);
     expect(out[0]!.soldPrice).toBe(87.28);
   });
 
-  it("keeps psa_10 rows when the sold-search keyword encodes PSA 10 but the title omits it", () => {
+  it("psa_10 drops rows without PSA 10 in the listing text (no inference from search keyword)", () => {
     const out = mapApifyEbaySoldItemsToListings(
       [
         {
@@ -215,8 +226,48 @@ describe("mapApifyEbaySoldItemsToListings", () => {
         },
       ],
       "Blaine's Charizard Gym Challenge #2 PSA 10",
+      "psa_10",
+    );
+    expect(out.length).toBe(0);
+  });
+
+  it("psa_10 keeps only PSA 10 slabs and drops other grades or CGC", () => {
+    const out = mapApifyEbaySoldItemsToListings(
+      [
+        {
+          title: "Venusaur PSA 10 Gem Mint",
+          soldPrice: 100,
+          endedAt: new Date(Date.UTC(2024, 0, 12)).toISOString(),
+          url: "https://www.ebay.com/itm/100000000001",
+          itemId: "100000000001",
+        },
+        {
+          title: "2009 POKEMON RUMBLE #10 MEW PSA 6",
+          soldPrice: 50,
+          endedAt: new Date(Date.UTC(2024, 0, 11)).toISOString(),
+          url: "https://www.ebay.com/itm/100000000002",
+          itemId: "100000000002",
+        },
+        {
+          title: "CGC 6.5 Venusaur 2009 Pokemon Rumble #1/16 Holo",
+          soldPrice: 40,
+          endedAt: new Date(Date.UTC(2024, 0, 10)).toISOString(),
+          url: "https://www.ebay.com/itm/100000000003",
+          itemId: "100000000003",
+        },
+        {
+          title: "2009 POKEMON RUMBLE #1 VENUSAUR PSA 7",
+          soldPrice: 30,
+          endedAt: new Date(Date.UTC(2024, 0, 9)).toISOString(),
+          url: "https://www.ebay.com/itm/100000000004",
+          itemId: "100000000004",
+        },
+      ],
+      "Venusaur Pokemon Rumble PSA 10",
+      "psa_10",
     );
     expect(out.length).toBe(1);
+    expect(out[0]!.title).toContain("PSA 10");
   });
 });
 

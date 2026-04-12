@@ -1,4 +1,5 @@
 import type { ConditionBucket } from "@prisma/client";
+import { soldListingTitleMatchesBucket } from "@/lib/search/ebay-sold-filters";
 import type { ScrapedCardSnapshot, ScrapedSoldListing, SoldListingCandidate } from "@/lib/scraping/types";
 import {
   canonicalEbayItemUrl,
@@ -328,7 +329,11 @@ function mappedRowToListingForValidation(row: MappedRow): ScrapedSoldListing {
  * Maps caffein.dev/ebay-sold-listings dataset items to internal sold rows.
  * Field names follow the actor output schema (endedAt, soldPrice, url, title, itemId, etc.).
  */
-export function mapApifyEbaySoldItemsToListings(items: ApifyItem[], keyword: string): ScrapedSoldListing[] {
+export function mapApifyEbaySoldItemsToListings(
+  items: ApifyItem[],
+  keyword: string,
+  conditionBucket: ConditionBucket,
+): ScrapedSoldListing[] {
   const storeRaw = storeRawPayload();
   const parsed: MappedRow[] = items
     .map((it) => {
@@ -379,7 +384,10 @@ export function mapApifyEbaySoldItemsToListings(items: ApifyItem[], keyword: str
         conditionLabel: condition ?? undefined,
       };
     })
-    .filter((row) => isValidSoldListing(mappedRowToListingForValidation(row)));
+    .filter((row) => isValidSoldListing(mappedRowToListingForValidation(row)))
+    .filter((row) =>
+      soldListingTitleMatchesBucket(row.title, conditionBucket, row.conditionLabel ?? null),
+    );
 
   const sorted = [...parsed].sort((a, b) => b.soldAt.getTime() - a.soldAt.getTime());
 
@@ -538,7 +546,7 @@ export async function runEbaySoldListingsActor(input: RunEbaySoldListingsInput):
 
   const items = await fetchEbaySoldListingsDataset(actorId, input.keyword, CANDIDATE_FETCH_COUNT, waitSec);
   lastItems = items;
-  const mapped = mapApifyEbaySoldItemsToListings(items, input.keyword);
+  const mapped = mapApifyEbaySoldItemsToListings(items, input.keyword, input.conditionBucket);
 
   soldListings = mapped.sort((a, b) => b.soldAt.getTime() - a.soldAt.getTime()).slice(0, maxValidSoldListings());
 
