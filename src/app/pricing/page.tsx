@@ -148,7 +148,7 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
             </div>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>• Full access to real sold listings</li>
-              <li>• See the 5 most recent verified sales</li>
+              <li>• See up to 5 most recent verified sales</li>
               <li>• Accurate pricing from actual transactions</li>
               <li>• Full price range insights</li>
               <li>• Unlimited access to updated market data (fair use applies)</li>
