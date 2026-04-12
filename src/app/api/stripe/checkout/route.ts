@@ -34,6 +34,9 @@ export async function POST() {
     await prisma.user.update({ where: { id: userId }, data: { stripeCustomerId: customerId } });
   }
 
+  /** Keep Stripe Customer email in sync so receipts and invoice emails go to the right address. */
+  await stripe.customers.update(customerId, { email: user.email });
+
   const checkout = await stripe.checkout.sessions.create({
     mode: "subscription",
     customer: customerId,
