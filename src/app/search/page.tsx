@@ -22,6 +22,8 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   const initialFormState = await searchFromUrlParams(searchParams);
   const session = await auth();
   const viewerPlanId = await getUserPlanId(session?.user?.id);
+  /** Avoid a second server search (and double preview debit) when the client updates the query string after submit. */
+  const syncSearchUrlWithHistoryOnly = !session?.user;
   const experienceKey =
     [formDefaults.name, formDefaults.setName, formDefaults.cardNumber, formDefaults.condition].join("\0") ||
     "__empty__";
@@ -32,6 +34,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
       initialFormState={initialFormState}
       formDefaults={formDefaults}
       viewerPlanId={viewerPlanId}
+      syncSearchUrlWithHistoryOnly={syncSearchUrlWithHistoryOnly}
     />
   );
 }

@@ -12,7 +12,7 @@ import type { AccessTier } from "@/lib/billing/access";
 import { getTierEntitlements } from "@/lib/billing/entitlements";
 import { searchCardMarketData } from "@/services/market-search.service";
 import { enforceAndRecordDailySearch } from "@/services/search-usage.service";
-import { enforceAndRecordPreviewSearch } from "@/services/preview-usage.service";
+import { enforceAndRecordPreviewSearch, getPreviewUsageCount } from "@/services/preview-usage.service";
 import { releaseOrphanedStarterReservation } from "@/services/fresh-scrape-usage.service";
 import type { ConditionBucket } from "@prisma/client";
 
@@ -28,8 +28,11 @@ export async function searchFromUrlParams(
   fd.set("setName", defaults.setName);
   fd.set("cardNumber", defaults.cardNumber);
   fd.set("condition", defaults.condition);
-  /** Do not debit quota on SSR / URL loads — only explicit form submits count (avoids refresh/remount inflation). */
-  return searchCardAction(fd, { debitAnonymousQuota: false });
+  /**
+   * Counts toward preview total (same as form submits). Logged-out users sync the URL after submit via
+   * `history.replaceState` so we do not double-charge when the client updates `?name=` without a full navigation.
+   */
+  return searchCardAction(fd, { debitAnonymousQuota: true });
 }
 
 type MarketSearchOk = Extract<Awaited<ReturnType<typeof searchCardMarketData>>, { kind: "ok" }>;
@@ -64,8 +67,8 @@ export async function pollCardSearchAction(formData: FormData): Promise<SearchCa
 
 type SearchCardActionOptions = {
   /**
-   * When false, a successful search does not increment anonymous usage (SSR / ?name= loads).
-   * Quota is still enforced when limits are on — only form submits advance the counter.
+   * When false, preview/collectors skip incrementing (poll retries). Preview still checks the cap so polls
+   * cannot bypass it after the limit is exceeded.
    */
   debitAnonymousQuota?: boolean;
 };
@@ -96,7 +99,20 @@ export async function searchCardAction(
     return { ok: false, code: "UNKNOWN", message: "Missing session. Please refresh the page." };
   }
 
-  // Enforce limits on explicit form submits only (not SSR / URL loads).
+  // Preview: poll/SSR paths skip incrementing (see debitAnonymousQuota) but must not bypass the cap.
+  if (!debitAnonymousQuota && tier === "preview" && aid) {
+    const limit = entitlements.previewSearchesTotalLimit ?? 2;
+    const used = await getPreviewUsageCount(aid);
+    if (used > limit) {
+      return {
+        ok: false,
+        code: "LIMIT",
+        message: "Preview limit reached. Create a free account to keep exploring CardPeek.",
+      };
+    }
+  }
+
+  // Enforce limits: preview totals on every search except poll retries (no double-count).
   if (debitAnonymousQuota) {
     if (tier === "preview") {
       const limit = entitlements.previewSearchesTotalLimit ?? 2;

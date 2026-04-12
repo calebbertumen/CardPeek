@@ -114,9 +114,16 @@ type SearchExperienceProps = {
   initialFormState: SearchCardState | null;
   formDefaults: SearchPageFormDefaults;
   viewerPlanId: "starter" | "collector";
+  /** Logged-out: update `?name=` without `router.replace` so the server does not run another debited search. */
+  syncSearchUrlWithHistoryOnly?: boolean;
 };
 
-export function SearchExperience({ initialFormState, formDefaults, viewerPlanId }: SearchExperienceProps) {
+export function SearchExperience({
+  initialFormState,
+  formDefaults,
+  viewerPlanId,
+  syncSearchUrlWithHistoryOnly = false,
+}: SearchExperienceProps) {
   const router = useRouter();
   const [state, setState] = useState<SearchCardState | null>(initialFormState);
   const stateRef = useRef<SearchCardState | null>(initialFormState);
@@ -206,7 +213,13 @@ export function SearchExperience({ initialFormState, formDefaults, viewerPlanId 
                 cardNumber: String(formData.get("cardNumber") ?? ""),
                 condition: String(formData.get("condition") ?? "raw_nm"),
               });
-              if (qs) router.replace(`/search?${qs}`, { scroll: false });
+              if (qs) {
+                if (syncSearchUrlWithHistoryOnly) {
+                  window.history.replaceState(null, "", `/search?${qs}`);
+                } else {
+                  router.replace(`/search?${qs}`, { scroll: false });
+                }
+              }
             }
           })();
         });
