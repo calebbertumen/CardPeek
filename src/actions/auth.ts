@@ -105,6 +105,9 @@ export async function requestPasswordResetAction(
   });
 
   if (!user?.passwordHash) {
+    console.info(
+      "[password-reset] Skipped send: no matching account with a password, or account uses another sign-in method.",
+    );
     return PASSWORD_RESET_GENERIC_SUCCESS;
   }
 
@@ -134,10 +137,14 @@ export async function requestPasswordResetAction(
 
   if (emailOutcome.outcome === "send_failed") {
     const hint =
-      process.env.NODE_ENV === "development"
+      process.env.NODE_ENV === "development" ||
+      process.env.PASSWORD_RESET_DEBUG === "true"
         ? ` Resend error (${emailOutcome.httpStatus}): ${emailOutcome.message}. Typical fixes: verify a domain in Resend and set RESEND_FROM_EMAIL to an address on that domain; with the default onboarding@resend.dev sender you can usually only send to your own Resend account email until a domain is verified.`
         : "";
-    if (process.env.NODE_ENV === "development") {
+    if (
+      process.env.NODE_ENV === "development" ||
+      process.env.PASSWORD_RESET_DEBUG === "true"
+    ) {
       return {
         error: `Could not send reset email.${hint}`,
       };

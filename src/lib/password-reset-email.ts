@@ -6,6 +6,25 @@ export type PasswordResetEmailOutcome =
   | { outcome: "send_failed"; httpStatus: number; message: string }
   | { outcome: "missing_api_key_production" };
 
+/**
+ * Vercel/env paste often wraps values in extra quotes; Resend rejects those for `from`.
+ * Accepts `email@x.com` or `Name <email@x.com>` (single space before `<`).
+ */
+export function normalizeResendFromAddress(raw: string): string {
+  let s = raw.trim();
+  if (
+    (s.startsWith('"') && s.endsWith('"')) ||
+    (s.startsWith("'") && s.endsWith("'"))
+  ) {
+    s = s.slice(1, -1).trim();
+  }
+  // "Name<email>" without space before `<` is invalid for Resend
+  if (/^[^<\s]+</.test(s)) {
+    s = s.replace(/^([^<]+)</, "$1 <");
+  }
+  return s;
+}
+
 function parseResendErrorMessage(bodyText: string): string {
   try {
     const j = JSON.parse(bodyText) as { message?: string | string[] };
@@ -40,8 +59,9 @@ export async function sendPasswordResetEmail(
     return { outcome: "missing_api_key_production" };
   }
 
-  const from =
-    process.env.RESEND_FROM_EMAIL?.trim() ?? "CardPeek <onboarding@resend.dev>";
+  const from = normalizeResendFromAddress(
+    process.env.RESEND_FROM_EMAIL ?? "CardPeek <onboarding@resend.dev>",
+  );
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
