@@ -8,6 +8,7 @@ type ScrapeMetricPayload = {
     | "apify_run_start"
     | "apify_run_success"
     | "apify_run_zero_results"
+    | "apify_run_no_exact_ebay_matches"
     | "apify_run_failure";
   durationMs?: number;
   listingCount?: number;

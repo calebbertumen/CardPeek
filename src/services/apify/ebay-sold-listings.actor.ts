@@ -8,6 +8,10 @@ import {
 } from "@/lib/search/ebay-sold-filters";
 import { logSoldScrapeMetric } from "@/services/apify/scrape-metrics";
 import { computeDisplayedAveragePrice } from "@/lib/pricing/compute-displayed-average-price";
+import {
+  ebaySoldSearchHtmlIndicatesNoExactMatches,
+  fetchEbaySoldSearchPageHtml,
+} from "@/lib/search/ebay-sold-search-exact-match";
 
 type ApifyRun = { id: string; defaultDatasetId: string; status?: string };
 
@@ -501,6 +505,31 @@ export async function runEbaySoldListingsActor(input: RunEbaySoldListingsInput):
     cacheKey: input.cacheKey,
     normalizedQuery: input.keyword,
   });
+
+  if (process.env.EBAY_SKIP_NO_EXACT_MATCH_PREFLIGHT !== "true") {
+    const serpHtml = await fetchEbaySoldSearchPageHtml(input.keyword);
+    if (serpHtml && ebaySoldSearchHtmlIndicatesNoExactMatches(serpHtml)) {
+      const durationMs = Date.now() - started;
+      logSoldScrapeMetric({
+        event: "apify_ebay_sold",
+        outcome: "apify_run_no_exact_ebay_matches",
+        cacheKey: input.cacheKey,
+        normalizedQuery: input.keyword,
+        durationMs,
+        listingCount: 0,
+      });
+      return {
+        normalizedCardIdentifier: input.normalizedCardIdentifier,
+        displayName: input.keyword,
+        soldListings: [],
+        averagePrice: 0,
+        medianPrice: 0,
+        minPrice: 0,
+        maxPrice: 0,
+        scrapedAt: new Date(),
+      };
+    }
+  }
 
   const waitSec = waitForFinishSeconds();
   let soldListings: ScrapedSoldListing[] = [];
