@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { buildCacheKey, normalizeCardKeyParts } from "@/lib/normalize";
 import type { Entitlements } from "@/lib/billing/entitlements";
 import { upsertCardFromApi } from "@/services/card-cache.service";
+import { fetchPokemonCardBestMatch } from "@/services/pokemon-tcg/pokemon-tcg.service";
 import { queueScrapeRefreshIfNeeded } from "@/services/scrape-queue.service";
 import { logSoldScrapeMetric } from "@/services/apify/scrape-metrics";
 import { waitForFreshSoldCache } from "@/services/sold-cache-wait.service";
@@ -105,15 +106,38 @@ export async function searchCardMarketData(input: {
   const tier = input.entitlements.tier;
   const userId = input.userId ?? null;
 
-  const card = tier !== "preview"
-    ? await upsertCardFromApi({
-        name: input.name,
-        setName: input.setName ?? null,
-        cardNumber: input.cardNumber ?? null,
-      })
-    : await prisma.card.findUnique({
-        where: { normalizedCardKey: normalizedKey },
-      });
+  const card =
+    tier !== "preview"
+      ? await upsertCardFromApi({
+          name: input.name,
+          setName: input.setName ?? null,
+          cardNumber: input.cardNumber ?? null,
+        })
+      : await (async () => {
+          /**
+           * Logged-in searches store `Card.normalizedCardKey` from the TCG API match (canonical name/set/number).
+           * Preview used to key only on raw form text, so keys often differed (e.g. missing #) and cache lookups failed.
+           */
+          const dto = await fetchPokemonCardBestMatch({
+            name: input.name,
+            setName: input.setName ?? null,
+            cardNumber: input.cardNumber ?? null,
+          });
+          if (dto) {
+            const keyFromApi = normalizeCardKeyParts({
+              name: dto.name,
+              setName: dto.set?.name ?? input.setName,
+              cardNumber: dto.number ?? input.cardNumber,
+            });
+            const byApiKey = await prisma.card.findUnique({
+              where: { normalizedCardKey: keyFromApi },
+            });
+            if (byApiKey) return byApiKey;
+          }
+          return prisma.card.findUnique({
+            where: { normalizedCardKey: normalizedKey },
+          });
+        })();
 
   if (!card) {
     return {

@@ -1,8 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const upsertCardFromApiMock = vi.fn();
+const cardFindUniqueMock = vi.fn();
 const cardCacheFindUniqueMock = vi.fn();
 const cardCacheUpdateMock = vi.fn();
+
+const fetchPokemonCardBestMatchMock = vi.fn();
+
+vi.mock("@/services/pokemon-tcg/pokemon-tcg.service", () => ({
+  fetchPokemonCardBestMatch: (...args: unknown[]) => fetchPokemonCardBestMatchMock(...args),
+}));
 
 vi.mock("@/services/card-cache.service", () => ({
   upsertCardFromApi: (...args: unknown[]) => upsertCardFromApiMock(...args),
@@ -10,7 +17,7 @@ vi.mock("@/services/card-cache.service", () => ({
 
 vi.mock("@/lib/db", () => ({
   prisma: {
-    card: { findUnique: vi.fn() },
+    card: { findUnique: (...args: unknown[]) => cardFindUniqueMock(...args) },
     cardCache: {
       findUnique: (...args: unknown[]) => cardCacheFindUniqueMock(...args),
       update: (...args: unknown[]) => cardCacheUpdateMock(...args),
@@ -61,10 +68,13 @@ vi.mock("@/services/card-search-activity.service", () => ({
 describe("searchCardMarketData (lifetime updated lookups)", () => {
   beforeEach(() => {
     upsertCardFromApiMock.mockReset();
+    cardFindUniqueMock.mockReset();
     cardCacheFindUniqueMock.mockReset();
     cardCacheUpdateMock.mockReset();
     getEntitlementMock.mockReset();
     queueStarterMock.mockReset();
+    fetchPokemonCardBestMatchMock.mockReset();
+    fetchPokemonCardBestMatchMock.mockResolvedValue(null);
   });
 
   it("Starter cache hit does not queue or reserve", async () => {
@@ -131,6 +141,77 @@ describe("searchCardMarketData (lifetime updated lookups)", () => {
 
     expect(res.kind).toBe("ok");
     expect(queueStarterMock).not.toHaveBeenCalled();
+  });
+
+  it("Preview resolves Card by the same TCG API key as logged-in upsert (cache hit)", async () => {
+    fetchPokemonCardBestMatchMock.mockResolvedValueOnce({
+      id: "svp-1",
+      name: "Pikachu",
+      number: "25",
+      set: { name: "Base Set" },
+      images: { small: "s", large: "l" },
+    });
+
+    const cardRow = {
+      id: "card1",
+      name: "Pikachu",
+      setName: "Base Set",
+      cardNumber: "25",
+      imageSmall: "s",
+      imageLarge: "l",
+      normalizedCardKey: "pikachu|base set|25",
+    };
+
+    cardFindUniqueMock.mockResolvedValueOnce(cardRow);
+
+    cardCacheFindUniqueMock.mockResolvedValueOnce({
+      id: "cache1",
+      avgPrice: 10,
+      medianPrice: 10,
+      lowPrice: 10,
+      highPrice: 10,
+      listingsCount: 1,
+      lastScrapedAt: new Date(Date.now() - 60_000),
+      lastScrapeError: null,
+      ebaySearchKeyword: "pikachu",
+      listings: [
+        {
+          title: "x",
+          source: "ebay",
+          soldPrice: 10,
+          soldDate: new Date(),
+          listingUrl: "https://www.ebay.com/itm/123",
+          conditionLabel: null,
+          gradeLabel: null,
+          rawOrGraded: null,
+          position: 1,
+        },
+      ],
+    });
+
+    const { searchCardMarketData } = await import("./market-search.service");
+    const res = await searchCardMarketData({
+      name: "pikachu",
+      setName: "Base Set",
+      requestedConditionBucket: "raw_nm",
+      entitlements: {
+        tier: "preview",
+        searchesPerDay: 0,
+        searchesPerDaySoftCap: 0,
+        previewSearchesTotalLimit: 2,
+        recentSalesVisibleCount: 0,
+        canTriggerRefresh: false,
+        canUseFilters: false,
+        canSeeExtendedHistory: false,
+        historyPeriodsDays: [],
+      },
+      userId: null,
+    });
+
+    expect(res.kind).toBe("ok");
+    expect(cardFindUniqueMock).toHaveBeenCalledWith({
+      where: { normalizedCardKey: "pikachu|base set|25" },
+    });
   });
 });
 
