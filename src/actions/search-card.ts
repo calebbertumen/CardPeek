@@ -155,7 +155,12 @@ export async function searchCardAction(
 
     if (tier === "preview" && aid) {
       const limit = entitlements.previewSearchesTotalLimit ?? 2;
-      const gate = await enforceAndRecordPreviewSearch({ anonymousId: aid, limitTotal: limit });
+      const debitFingerprint = `${result.data.card.normalizedCardKey}__${result.data.conditionBucket}`;
+      const gate = await enforceAndRecordPreviewSearch({
+        anonymousId: aid,
+        limitTotal: limit,
+        debitFingerprint,
+      });
       if (!gate.ok) {
         return {
           ok: false,

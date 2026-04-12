@@ -316,11 +316,14 @@ model AnonymousUsage {
 }
 
 model PreviewUsage {
-  id          String   @id @default(cuid())
-  anonymousId String   @unique
-  searches    Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                   String    @id @default(cuid())
+  anonymousId          String    @unique
+  searches             Int       @default(0)
+  /** Dedupe rapid duplicate server-action invocations (e.g. React Strict Mode) for the same card+condition. */
+  lastDebitFingerprint String?
+  lastDebitAt          DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 }
 
 model SearchUsage {

@@ -129,6 +129,8 @@ export function SearchExperience({
   const stateRef = useRef<SearchCardState | null>(initialFormState);
   const [isPending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
+  /** Blocks duplicate form action invocations (e.g. React Strict Mode) from charging preview twice per click. */
+  const submitGuardRef = useRef(false);
   /** Last URL-aligned or explicitly submitted search — background poll must not read live inputs while the user is typing. */
   const lastSubmittedSearchRef = useRef<SearchFieldsSnapshot>({
     name: formDefaults.name,
@@ -195,31 +197,37 @@ export function SearchExperience({
     <form
       ref={formRef}
       action={(formData) => {
+        if (submitGuardRef.current) return;
+        submitGuardRef.current = true;
         startTransition(() => {
           void (async () => {
-            lastSubmittedSearchRef.current = {
-              name: String(formData.get("name") ?? "").trim(),
-              setName: String(formData.get("setName") ?? "").trim(),
-              cardNumber: String(formData.get("cardNumber") ?? "").trim(),
-              condition: String(formData.get("condition") ?? "raw_nm"),
-            };
-            const next = await searchCardStateAction(stateRef.current, formData);
-            setState(next);
-            const name = lastSubmittedSearchRef.current.name;
-            if (name) {
-              const qs = buildSearchQueryStringFromFields({
-                name,
-                setName: String(formData.get("setName") ?? ""),
-                cardNumber: String(formData.get("cardNumber") ?? ""),
+            try {
+              lastSubmittedSearchRef.current = {
+                name: String(formData.get("name") ?? "").trim(),
+                setName: String(formData.get("setName") ?? "").trim(),
+                cardNumber: String(formData.get("cardNumber") ?? "").trim(),
                 condition: String(formData.get("condition") ?? "raw_nm"),
-              });
-              if (qs) {
-                if (syncSearchUrlWithHistoryOnly) {
-                  window.history.replaceState(null, "", `/search?${qs}`);
-                } else {
-                  router.replace(`/search?${qs}`, { scroll: false });
+              };
+              const next = await searchCardStateAction(stateRef.current, formData);
+              setState(next);
+              const name = lastSubmittedSearchRef.current.name;
+              if (name) {
+                const qs = buildSearchQueryStringFromFields({
+                  name,
+                  setName: String(formData.get("setName") ?? ""),
+                  cardNumber: String(formData.get("cardNumber") ?? ""),
+                  condition: String(formData.get("condition") ?? "raw_nm"),
+                });
+                if (qs) {
+                  if (syncSearchUrlWithHistoryOnly) {
+                    window.history.replaceState(null, "", `/search?${qs}`);
+                  } else {
+                    router.replace(`/search?${qs}`, { scroll: false });
+                  }
                 }
               }
+            } finally {
+              submitGuardRef.current = false;
             }
           })();
         });
