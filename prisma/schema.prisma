@@ -79,6 +79,19 @@ model User {
   searchUsage          SearchUsage[]
   watchlistAlertEvents WatchlistAlertHistory[]
   starterHiddenLiveUsage StarterHiddenLiveUsage[]
+  passwordResetTokens    PasswordResetToken[]
+}
+
+/// One-time tokens for email password reset (raw token is hashed at rest).
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 /// Internal counter: Starter hidden live market lookups per UTC day (not user-visible).
