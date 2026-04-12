@@ -16,6 +16,53 @@ function escapeQueryPart(s: string): string {
   return s.replace(/"/g, '\\"').trim();
 }
 
+/** Escape user input for a Lucene prefix wildcard (`name:prefix*`). */
+function escapeLucenePrefix(s: string): string {
+  const t = s.trim();
+  return t.replace(/\\/g, "\\\\").replace(/([+\-&|!(){}\[\]^"~*?:/])/g, "\\$1");
+}
+
+const MAX_NAME_SUGGESTIONS = 4;
+
+/**
+ * Distinct card names that start with `prefix` (Pokémon TCG API v2 Lucene `name:prefix*`).
+ */
+export async function fetchPokemonCardNameSuggestions(prefix: string): Promise<string[]> {
+  const raw = prefix.trim();
+  if (raw.length < 1 || raw.length > 64) return [];
+
+  const q = `name:${escapeLucenePrefix(raw)}*`;
+  const url = `https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent(q)}&pageSize=20&orderBy=name`;
+
+  const headers: HeadersInit = { Accept: "application/json" };
+  const key = process.env.POKEMON_TCG_API_KEY;
+  if (key) (headers as Record<string, string>)["X-Api-Key"] = key;
+
+  const res = await fetch(url, { headers, next: { revalidate: 0 } });
+  if (!res.ok) {
+    return [];
+  }
+
+  const json = (await res.json()) as { data?: PokemonTcgCardDTO[] };
+  const list = json.data ?? [];
+  const lower = raw.toLowerCase();
+  const seen = new Set<string>();
+  const names: string[] = [];
+
+  for (const card of list) {
+    const n = card.name?.trim();
+    if (!n) continue;
+    const nk = n.toLowerCase();
+    if (!nk.startsWith(lower)) continue;
+    if (seen.has(nk)) continue;
+    seen.add(nk);
+    names.push(n);
+    if (names.length >= MAX_NAME_SUGGESTIONS) break;
+  }
+
+  return names.sort((a, b) => a.localeCompare(b));
+}
+
 function buildQuery(name: string, setName?: string | null, cardNumber?: string | null): string {
   const parts: string[] = [`name:"${escapeQueryPart(name)}"`];
   if (setName?.trim()) {

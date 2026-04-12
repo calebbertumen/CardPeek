@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CardNameCombobox } from "@/components/search/card-name-combobox";
 import { SetNameCombobox } from "@/components/search/set-name-combobox";
 import {
   Select,
@@ -56,12 +57,11 @@ export function CardSearchFields({
           <Label htmlFor={pid("name")} className="text-xs">
             Card name
           </Label>
-          <Input
+          <CardNameCombobox
             id={pid("name")}
             name="name"
             placeholder="e.g. Charizard"
             required
-            autoComplete="off"
             className="h-11 w-full min-w-0"
             defaultValue={defaults.name}
           />
@@ -85,7 +85,6 @@ export function CardSearchFields({
           <Input
             id={pid("cardNumber")}
             name="cardNumber"
-            placeholder="4"
             autoComplete="off"
             className="h-11 w-full px-2"
             defaultValue={defaults.cardNumber}
