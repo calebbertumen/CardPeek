@@ -215,15 +215,17 @@ export async function processPendingScrapeJobs(input?: { limit?: number }): Prom
         });
       });
 
-      await prisma.priceHistoryPoint.createMany({
-        data: [7, 30].map((periodDays) => ({
-          cardId: card.id,
-          periodDays,
-          price: new Prisma.Decimal(Number(cache.avgPrice).toFixed(2)),
-          recordedAt: cache.lastScrapedAt,
-        })),
-        skipDuplicates: false,
-      });
+      if (n > 0) {
+        await prisma.priceHistoryPoint.createMany({
+          data: [7, 30].map((periodDays) => ({
+            cardId: card.id,
+            periodDays,
+            price: new Prisma.Decimal(Number(cache.avgPrice).toFixed(2)),
+            recordedAt: cache.lastScrapedAt,
+          })),
+          skipDuplicates: false,
+        });
+      }
 
       if (next.requestedByUserId) {
         await consumeReservedFreeUpdatedLookupCredit(next.requestedByUserId);

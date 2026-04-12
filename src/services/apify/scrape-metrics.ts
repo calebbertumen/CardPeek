@@ -2,7 +2,13 @@ type ScrapeMetricPayload = {
   event: "apify_ebay_sold";
   cacheKey?: string;
   normalizedQuery?: string;
-  outcome: "cache_hit" | "cache_miss" | "apify_run_start" | "apify_run_success" | "apify_run_failure";
+  outcome:
+    | "cache_hit"
+    | "cache_miss"
+    | "apify_run_start"
+    | "apify_run_success"
+    | "apify_run_zero_results"
+    | "apify_run_failure";
   durationMs?: number;
   listingCount?: number;
   error?: string;

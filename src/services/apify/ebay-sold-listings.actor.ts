@@ -535,14 +535,24 @@ export async function runEbaySoldListingsActor(input: RunEbaySoldListingsInput):
     }
     logSoldScrapeMetric({
       event: "apify_ebay_sold",
-      outcome: "apify_run_failure",
+      outcome: "apify_run_zero_results",
       cacheKey: input.cacheKey,
       normalizedQuery: input.keyword,
       durationMs,
       listingCount: 0,
-      error: "NO_SOLD_RESULTS",
     });
-    throw new Error("NO_SOLD_RESULTS");
+    // Successful run with no matching sales — persist an empty cache so the UI stops "fetching" and
+    // does not retry forever (previously we threw, which failed the job and left no CardCache row).
+    return {
+      normalizedCardIdentifier: input.normalizedCardIdentifier,
+      displayName: input.keyword,
+      soldListings: [],
+      averagePrice: 0,
+      medianPrice: 0,
+      minPrice: 0,
+      maxPrice: 0,
+      scrapedAt: new Date(),
+    };
   }
 
   const prices = soldListings.map((l) => l.soldPrice);
