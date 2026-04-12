@@ -1,13 +1,5 @@
 import { prisma } from "@/lib/db";
 
-export async function getPreviewUsageCount(anonymousId: string): Promise<number> {
-  const row = await prisma.previewUsage.findUnique({
-    where: { anonymousId },
-    select: { searches: true },
-  });
-  return row?.searches ?? 0;
-}
-
 export async function enforceAndRecordPreviewSearch(input: {
   anonymousId: string;
   limitTotal: number;

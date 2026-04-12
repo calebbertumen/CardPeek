@@ -12,7 +12,7 @@ import type { AccessTier } from "@/lib/billing/access";
 import { getTierEntitlements } from "@/lib/billing/entitlements";
 import { searchCardMarketData } from "@/services/market-search.service";
 import { enforceAndRecordDailySearch } from "@/services/search-usage.service";
-import { enforceAndRecordPreviewSearch, getPreviewUsageCount } from "@/services/preview-usage.service";
+import { enforceAndRecordPreviewSearch } from "@/services/preview-usage.service";
 import { releaseOrphanedStarterReservation } from "@/services/fresh-scrape-usage.service";
 import type { ConditionBucket } from "@prisma/client";
 
@@ -29,8 +29,8 @@ export async function searchFromUrlParams(
   fd.set("cardNumber", defaults.cardNumber);
   fd.set("condition", defaults.condition);
   /**
-   * Counts toward preview total (same as form submits). Logged-out users sync the URL after submit via
-   * `history.replaceState` so we do not double-charge when the client updates `?name=` without a full navigation.
+   * Preview quota is charged only when the response shows cached market data (`ok`). Logged-out users sync the
+   * URL after submit via `history.replaceState` so we do not double-run a charged search.
    */
   return searchCardAction(fd, { debitAnonymousQuota: true });
 }
@@ -67,8 +67,8 @@ export async function pollCardSearchAction(formData: FormData): Promise<SearchCa
 
 type SearchCardActionOptions = {
   /**
-   * When false, preview/collectors skip incrementing (poll retries). Preview still checks the cap so polls
-   * cannot bypass it after the limit is exceeded.
+   * When false, poll retries skip collector daily increment. Preview quota is applied only after a cache hit
+   * (`ok`), including when this flag is false.
    */
   debitAnonymousQuota?: boolean;
 };
@@ -99,46 +99,20 @@ export async function searchCardAction(
     return { ok: false, code: "UNKNOWN", message: "Missing session. Please refresh the page." };
   }
 
-  // Preview: poll/SSR paths skip incrementing (see debitAnonymousQuota) but must not bypass the cap.
-  if (!debitAnonymousQuota && tier === "preview" && aid) {
-    const limit = entitlements.previewSearchesTotalLimit ?? 2;
-    const used = await getPreviewUsageCount(aid);
-    if (used > limit) {
+  // Collector daily cap (anonymous or signed-in collector). Preview: charged only after a cache hit below.
+  if (debitAnonymousQuota && tier === "collector") {
+    const gate = await enforceAndRecordDailySearch({
+      entitlements,
+      userId: session?.user?.id ?? null,
+      anonymousId: session?.user?.id ? null : aid,
+    });
+    if (!gate.ok) {
       return {
         ok: false,
         code: "LIMIT",
-        message: "Preview limit reached. Create a free account to keep exploring CardPeek.",
+        tier,
+        message: `You’ve reached today’s search limit (${gate.limit.toLocaleString()} searches). Please try again tomorrow.`,
       };
-    }
-  }
-
-  // Enforce limits: preview totals on every search except poll retries (no double-count).
-  if (debitAnonymousQuota) {
-    if (tier === "preview") {
-      const limit = entitlements.previewSearchesTotalLimit ?? 2;
-      const gate = await enforceAndRecordPreviewSearch({ anonymousId: aid!, limitTotal: limit });
-      if (!gate.ok) {
-        return {
-          ok: false,
-          code: "LIMIT",
-          message: "Preview limit reached. Create a free account to keep exploring CardPeek.",
-        };
-      }
-    } else if (tier === "collector") {
-      // Starter: unlimited cache searches; only lifetime fresh-scrape credits apply (see `fresh-scrape-usage.service`).
-      const gate = await enforceAndRecordDailySearch({
-        entitlements,
-        userId: session?.user?.id ?? null,
-        anonymousId: session?.user?.id ? null : aid,
-      });
-      if (!gate.ok) {
-        return {
-          ok: false,
-          code: "LIMIT",
-          tier,
-          message: `You’ve reached today’s search limit (${gate.limit.toLocaleString()} searches). Please try again tomorrow.`,
-        };
-      }
     }
   }
 
@@ -172,7 +146,7 @@ export async function searchCardAction(
           code: "NO_DATA",
           tier: "preview",
           message:
-            "This card is not available in preview mode yet. Create a free account to continue exploring CardPeek.",
+            "There’s no cached market data for this card in preview yet. Create a free account to continue exploring CardPeek.",
         };
       }
       if (tier === "starter") {
@@ -195,6 +169,18 @@ export async function searchCardAction(
         isRefreshing: result.isRefreshing,
         showFetchingBanner: result.showFetchingBanner,
       };
+    }
+
+    if (tier === "preview" && aid) {
+      const limit = entitlements.previewSearchesTotalLimit ?? 2;
+      const gate = await enforceAndRecordPreviewSearch({ anonymousId: aid, limitTotal: limit });
+      if (!gate.ok) {
+        return {
+          ok: false,
+          code: "LIMIT",
+          message: "Preview limit reached. Create a free account to keep exploring CardPeek.",
+        };
+      }
     }
 
     return { ok: true, data: result.data, tier };
