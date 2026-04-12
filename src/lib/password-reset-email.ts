@@ -1,21 +1,47 @@
 import { getAppOrigin } from "@/lib/app-origin";
 
-export async function sendPasswordResetEmail(to: string, rawToken: string): Promise<void> {
+export type PasswordResetEmailOutcome =
+  | { outcome: "sent"; messageId?: string }
+  | { outcome: "dev_terminal_log"; resetUrl: string }
+  | { outcome: "send_failed"; httpStatus: number; message: string }
+  | { outcome: "missing_api_key_production" };
+
+function parseResendErrorMessage(bodyText: string): string {
+  try {
+    const j = JSON.parse(bodyText) as { message?: string | string[] };
+    if (Array.isArray(j.message)) return j.message.join(" ");
+    if (typeof j.message === "string") return j.message;
+  } catch {
+    /* ignore */
+  }
+  return bodyText.slice(0, 500);
+}
+
+/**
+ * Sends the password reset email via Resend, or logs the link in development when no API key is set.
+ */
+export async function sendPasswordResetEmail(
+  to: string,
+  rawToken: string,
+): Promise<PasswordResetEmailOutcome> {
   const origin = getAppOrigin();
   const resetUrl = `${origin}/reset-password?token=${encodeURIComponent(rawToken)}`;
 
-  const apiKey = process.env.RESEND_API_KEY;
+  const apiKey = process.env.RESEND_API_KEY?.trim();
   if (!apiKey) {
     if (process.env.NODE_ENV === "development") {
-      console.info("[password-reset] RESEND_API_KEY not set; reset link (dev only):\n", resetUrl);
-    } else {
-      console.error("[password-reset] RESEND_API_KEY is not set; cannot send reset email.");
+      console.info(
+        "[password-reset] RESEND_API_KEY not set; reset link (copy from terminal):\n",
+        resetUrl,
+      );
+      return { outcome: "dev_terminal_log", resetUrl };
     }
-    return;
+    console.error("[password-reset] RESEND_API_KEY is not set; cannot send reset email.");
+    return { outcome: "missing_api_key_production" };
   }
 
   const from =
-    process.env.RESEND_FROM_EMAIL ?? "CardPeek <onboarding@resend.dev>";
+    process.env.RESEND_FROM_EMAIL?.trim() ?? "CardPeek <onboarding@resend.dev>";
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -34,8 +60,22 @@ export async function sendPasswordResetEmail(to: string, rawToken: string): Prom
     }),
   });
 
+  const bodyText = await res.text();
+
   if (!res.ok) {
-    const body = await res.text();
-    console.error("[password-reset] Resend API error:", res.status, body);
+    const message = parseResendErrorMessage(bodyText);
+    console.error("[password-reset] Resend API error:", res.status, bodyText);
+    return { outcome: "send_failed", httpStatus: res.status, message };
   }
+
+  let messageId: string | undefined;
+  try {
+    const json = JSON.parse(bodyText) as { data?: { id?: string } };
+    messageId = json.data?.id;
+  } catch {
+    /* non-JSON success is unexpected */
+  }
+
+  console.info("[password-reset] Resend accepted email", { to, messageId });
+  return { outcome: "sent", messageId };
 }

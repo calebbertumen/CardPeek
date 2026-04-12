@@ -83,9 +83,11 @@ export async function loginStateAction(
   return undefined;
 }
 
+const PASSWORD_RESET_GENERIC_SUCCESS_MESSAGE =
+  "If an account exists for that email, we sent a link to reset your password. Check your inbox.";
+
 const PASSWORD_RESET_GENERIC_SUCCESS: AuthFormState = {
-  success:
-    "If an account exists for that email, we sent a link to reset your password. Check your inbox.",
+  success: PASSWORD_RESET_GENERIC_SUCCESS_MESSAGE,
 };
 
 export async function requestPasswordResetAction(
@@ -117,7 +119,36 @@ export async function requestPasswordResetAction(
     }),
   ]);
 
-  await sendPasswordResetEmail(email, rawToken);
+  const emailOutcome = await sendPasswordResetEmail(email, rawToken);
+
+  if (emailOutcome.outcome === "dev_terminal_log") {
+    return {
+      success: `${PASSWORD_RESET_GENERIC_SUCCESS_MESSAGE} (Dev: RESEND_API_KEY is not set — copy the reset link from the terminal where Next.js is running.)`,
+    };
+  }
+
+  if (emailOutcome.outcome === "missing_api_key_production") {
+    console.error("[password-reset] Email not sent: missing RESEND_API_KEY in production.");
+    return PASSWORD_RESET_GENERIC_SUCCESS;
+  }
+
+  if (emailOutcome.outcome === "send_failed") {
+    const hint =
+      process.env.NODE_ENV === "development"
+        ? ` Resend error (${emailOutcome.httpStatus}): ${emailOutcome.message}. Typical fixes: verify a domain in Resend and set RESEND_FROM_EMAIL to an address on that domain; with the default onboarding@resend.dev sender you can usually only send to your own Resend account email until a domain is verified.`
+        : "";
+    if (process.env.NODE_ENV === "development") {
+      return {
+        error: `Could not send reset email.${hint}`,
+      };
+    }
+    console.error("[password-reset] Resend send_failed in production; user shown generic message.", {
+      httpStatus: emailOutcome.httpStatus,
+      message: emailOutcome.message,
+    });
+    return PASSWORD_RESET_GENERIC_SUCCESS;
+  }
+
   return PASSWORD_RESET_GENERIC_SUCCESS;
 }
 
