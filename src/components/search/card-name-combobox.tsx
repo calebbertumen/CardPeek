@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 const DEBOUNCE_MS = 300;
-const MAX_SUGGESTIONS = 4;
+const MAX_SUGGESTIONS = 5;
 
 type CardNameComboboxProps = {
   id: string;

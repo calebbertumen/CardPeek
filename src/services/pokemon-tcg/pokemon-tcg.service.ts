@@ -22,7 +22,7 @@ function escapeLucenePrefix(s: string): string {
   return t.replace(/\\/g, "\\\\").replace(/([+\-&|!(){}\[\]^"~*?:/])/g, "\\$1");
 }
 
-const MAX_NAME_SUGGESTIONS = 4;
+const MAX_NAME_SUGGESTIONS = 5;
 /** Card rows per request — many prints share the same name, so we paginate until we have enough distinct names. */
 const NAME_SUGGEST_PAGE_SIZE = 100;
 const NAME_SUGGEST_MAX_PAGES = 12;
