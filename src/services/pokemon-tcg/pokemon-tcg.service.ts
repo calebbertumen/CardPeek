@@ -23,41 +23,53 @@ function escapeLucenePrefix(s: string): string {
 }
 
 const MAX_NAME_SUGGESTIONS = 4;
+/** Card rows per request — many prints share the same name, so we paginate until we have enough distinct names. */
+const NAME_SUGGEST_PAGE_SIZE = 100;
+const NAME_SUGGEST_MAX_PAGES = 12;
 
 /**
  * Distinct card names that start with `prefix` (Pokémon TCG API v2 Lucene `name:prefix*`).
+ *
+ * A single page of results is mostly duplicate names (same Pokémon, many sets). We paginate and do not use
+ * `orderBy=name`, which would return every print of "Charcadet" before any "Charmander" row.
  */
 export async function fetchPokemonCardNameSuggestions(prefix: string): Promise<string[]> {
   const raw = prefix.trim();
   if (raw.length < 1 || raw.length > 64) return [];
 
   const q = `name:${escapeLucenePrefix(raw)}*`;
-  const url = `https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent(q)}&pageSize=20&orderBy=name`;
+  const lower = raw.toLowerCase();
+  const seen = new Set<string>();
+  const names: string[] = [];
 
   const headers: HeadersInit = { Accept: "application/json" };
   const key = process.env.POKEMON_TCG_API_KEY;
   if (key) (headers as Record<string, string>)["X-Api-Key"] = key;
 
-  const res = await fetch(url, { headers, next: { revalidate: 0 } });
-  if (!res.ok) {
-    return [];
-  }
+  for (let page = 1; page <= NAME_SUGGEST_MAX_PAGES && names.length < MAX_NAME_SUGGESTIONS; page++) {
+    const url = `https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent(q)}&pageSize=${NAME_SUGGEST_PAGE_SIZE}&page=${page}`;
 
-  const json = (await res.json()) as { data?: PokemonTcgCardDTO[] };
-  const list = json.data ?? [];
-  const lower = raw.toLowerCase();
-  const seen = new Set<string>();
-  const names: string[] = [];
+    const res = await fetch(url, { headers, next: { revalidate: 0 } });
+    if (!res.ok) {
+      break;
+    }
 
-  for (const card of list) {
-    const n = card.name?.trim();
-    if (!n) continue;
-    const nk = n.toLowerCase();
-    if (!nk.startsWith(lower)) continue;
-    if (seen.has(nk)) continue;
-    seen.add(nk);
-    names.push(n);
-    if (names.length >= MAX_NAME_SUGGESTIONS) break;
+    const json = (await res.json()) as { data?: PokemonTcgCardDTO[] };
+    const list = json.data ?? [];
+    if (list.length === 0) break;
+
+    for (const card of list) {
+      const n = card.name?.trim();
+      if (!n) continue;
+      const nk = n.toLowerCase();
+      if (!nk.startsWith(lower)) continue;
+      if (seen.has(nk)) continue;
+      seen.add(nk);
+      names.push(n);
+      if (names.length >= MAX_NAME_SUGGESTIONS) break;
+    }
+
+    if (list.length < NAME_SUGGEST_PAGE_SIZE) break;
   }
 
   return names.sort((a, b) => a.localeCompare(b));
