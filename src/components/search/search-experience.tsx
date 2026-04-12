@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { pollCardSearchAction, searchCardStateAction, type SearchCardState } from "@/actions/search-card";
@@ -40,16 +41,18 @@ function ResultsSection({ state, pending }: { state: SearchCardState | null; pen
   }
   if (state?.ok === false && state.code === "NO_DATA") {
     const t = state.tier;
+    const waitingOnScrape = state.isRefreshing === true;
     return (
       <div className="mt-10 rounded-2xl border border-border/80 bg-card p-6 shadow-lg shadow-black/25 sm:p-8">
         <div className="space-y-2">
           <p className="text-sm font-medium text-foreground">Data not available yet</p>
-          {state.showFetchingBanner ? (
-            <p className="text-sm font-medium text-foreground" role="status" aria-live="polite">
-              Fetching latest sold listings…
+          {!waitingOnScrape ? (
+            <p className="text-sm text-muted-foreground">{state.message}</p>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Results will appear here when the first market snapshot is ready.
             </p>
-          ) : null}
-          <p className="text-sm text-muted-foreground">{state.message}</p>
+          )}
           {t === "preview" ? (
             <p className="text-sm text-muted-foreground">
               Create a free account to unlock more searches and a fuller market snapshot.
@@ -267,6 +270,25 @@ export function SearchExperience({ initialFormState, formDefaults, viewerPlanId 
                               : "Search limits help keep CardPeek fast and reliable."}
                         </span>
                       </div>
+                    </div>
+                  ) : state.code === "NO_DATA" && state.isRefreshing ? (
+                    <div
+                      className="mt-4 flex items-start gap-3 rounded-xl border border-border/80 bg-surface-alt/35 px-4 py-3 text-sm"
+                      role="status"
+                      aria-live="polite"
+                    >
+                      <Loader2
+                        className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-primary"
+                        aria-hidden
+                      />
+                      <p className="leading-relaxed">
+                        <span className="font-medium text-foreground">
+                          Fetching updated market data for this card.
+                        </span>{" "}
+                        <span className="text-muted-foreground">
+                          (Listings are updated regularly and may not reflect real-time data).
+                        </span>
+                      </p>
                     </div>
                   ) : (
                     <div
