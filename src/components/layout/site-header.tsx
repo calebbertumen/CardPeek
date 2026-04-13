@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -9,8 +10,19 @@ export async function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 border-b border-border/80 bg-background/85 backdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4 sm:h-16 sm:gap-4 sm:px-6">
-        <Link href="/" className="shrink-0 text-lg font-semibold tracking-tight text-foreground">
-          CardPeek
+        <Link
+          href="/"
+          className="relative shrink-0 outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          aria-label="CardPeek — Home"
+        >
+          <Image
+            src="/cardpeek-logo.png"
+            alt=""
+            width={2000}
+            height={2000}
+            priority
+            className="h-11 w-auto object-contain object-left sm:h-14"
+          />
         </Link>
 
         <nav className="flex flex-1 items-center justify-end gap-2 sm:gap-3 md:gap-8">
