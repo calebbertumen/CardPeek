@@ -21,7 +21,7 @@ export async function SiteHeader() {
             width={2000}
             height={2000}
             priority
-            className="h-11 w-auto object-contain object-left sm:h-14"
+            className="h-10 w-auto object-contain object-left sm:h-12"
           />
         </Link>
 
