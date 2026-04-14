@@ -176,6 +176,15 @@ export function SetNameCombobox({
     setOpen(false);
   }, []);
 
+  /** Close on Tab / focus leave; defer so list mousedown (preventDefault) keeps focus on input. */
+  const closeOnBlur = useCallback(() => {
+    window.setTimeout(() => {
+      const ae = document.activeElement;
+      if (wrapRef.current?.contains(ae) || listRef.current?.contains(ae)) return;
+      setOpen(false);
+    }, 0);
+  }, []);
+
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (
       !open &&
@@ -272,6 +281,7 @@ export function SetNameCombobox({
           setOpen(true);
         }}
         onFocus={() => setOpen(true)}
+        onBlur={closeOnBlur}
         onKeyDown={onKeyDown}
         placeholder={loading ? "Loading sets…" : loadError ? "e.g. Base Set" : placeholder}
         autoComplete="off"

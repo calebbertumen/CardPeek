@@ -147,6 +147,15 @@ export function CardNameCombobox({
     setOpen(false);
   }, []);
 
+  /** Close on Tab / focus leave; defer so list mousedown (preventDefault) keeps focus on input. */
+  const closeOnBlur = useCallback(() => {
+    window.setTimeout(() => {
+      const ae = document.activeElement;
+      if (wrapRef.current?.contains(ae) || listRef.current?.contains(ae)) return;
+      setOpen(false);
+    }, 0);
+  }, []);
+
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!open && (e.key === "ArrowDown" || e.key === "ArrowUp") && debounced.trim().length > 0) {
       e.preventDefault();
@@ -238,6 +247,7 @@ export function CardNameCombobox({
           setOpen(true);
         }}
         onFocus={() => setOpen(true)}
+        onBlur={closeOnBlur}
         onKeyDown={onKeyDown}
         placeholder={placeholder}
         required={required}
