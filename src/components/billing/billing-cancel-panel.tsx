@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { CollectorRefundEligibilityResult } from "@/lib/billing/collector-refund-eligibility";
+import { formatNextBillingDate } from "@/lib/format";
 
 export type BillingCancelPanelProps = {
   isCollector: boolean;
@@ -19,7 +20,7 @@ type Props = BillingCancelPanelProps;
 
 function formatPeriodDate(d: Date | null): string | null {
   if (!d) return null;
-  return d.toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  return formatNextBillingDate(d);
 }
 
 export function BillingCancelPanel({

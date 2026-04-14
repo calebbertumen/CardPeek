@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { getPlan, type PlanId } from "@/lib/billing/plans";
+import { syncSubscriptionFromStripeForUser } from "@/services/billing/stripe-provisioning";
 import {
   canUserReceiveCollectorRefund,
   type CollectorRefundEligibilityResult,
@@ -54,7 +55,7 @@ export async function getUserSubscriptionSummary(userId: string): Promise<UserSu
     select: { collectorTierActive: true },
   });
 
-  const sub = await prisma.subscription.findFirst({
+  let sub = await prisma.subscription.findFirst({
     where: { userId, planId: "collector" },
     orderBy: { updatedAt: "desc" },
     select: {
@@ -62,6 +63,22 @@ export async function getUserSubscriptionSummary(userId: string): Promise<UserSu
       cancelAtPeriodEnd: true,
     },
   });
+
+  if (
+    planId === "collector" &&
+    sub?.cancelAtPeriodEnd &&
+    !sub.subscriptionCurrentPeriodEnd
+  ) {
+    await syncSubscriptionFromStripeForUser(userId);
+    sub = await prisma.subscription.findFirst({
+      where: { userId, planId: "collector" },
+      orderBy: { updatedAt: "desc" },
+      select: {
+        subscriptionCurrentPeriodEnd: true,
+        cancelAtPeriodEnd: true,
+      },
+    });
+  }
 
   return {
     planId,
