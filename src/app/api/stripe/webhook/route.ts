@@ -68,8 +68,18 @@ export async function POST(req: Request) {
       case "customer.subscription.created":
       case "customer.subscription.updated": {
         const subscription = event.data.object as import("stripe").Stripe.Subscription;
-        const userId = (subscription.metadata?.userId as string | undefined) ?? undefined;
-        const customerId = (subscription.customer as string | null) ?? null;
+        let userId = subscription.metadata?.userId as string | undefined;
+        const customerId =
+          typeof subscription.customer === "string"
+            ? subscription.customer
+            : subscription.customer?.id ?? null;
+        if (!userId && customerId) {
+          const u = await prisma.user.findFirst({
+            where: { stripeCustomerId: customerId },
+            select: { id: true },
+          });
+          userId = u?.id;
+        }
         if (userId) {
           await upsertSubscriptionFromStripe({ userId, customerId, subscription });
         }

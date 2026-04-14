@@ -9,6 +9,13 @@ import { recordFirstCollectorPurchaseFromInvoiceIfNeeded } from "@/services/bill
  * Idempotent updates keyed by Stripe ids.
  */
 
+/** Paid access window: active billing, trial, or payment-retry grace (`past_due`). */
+export function subscriptionGrantsCollectorAccess(sub: Stripe.Subscription): boolean {
+  return (
+    sub.status === "active" || sub.status === "trialing" || sub.status === "past_due"
+  );
+}
+
 export async function ensureUserStripeCustomer(userId: string, customerId: string | null) {
   if (!customerId) return;
   await prisma.user.update({
@@ -26,13 +33,12 @@ export async function upsertSubscriptionFromStripe(input: {
 
   const planId = "collector";
   const sub = input.subscription;
-  const subscriptionStatus =
-    sub.status === "active" || sub.status === "trialing" ? "active" : "inactive";
+  const subscriptionStatus = subscriptionGrantsCollectorAccess(sub) ? "active" : "inactive";
   const currentPeriodEndSeconds =
     (sub as unknown as { current_period_end?: number }).current_period_end ?? null;
   const cancelAtPeriodEnd = sub.cancel_at_period_end ?? false;
 
-  const activeAccess = sub.status === "active" || sub.status === "trialing";
+  const activeAccess = subscriptionGrantsCollectorAccess(sub);
 
   const data = {
     userId: input.userId,
@@ -75,7 +81,40 @@ export async function markSubscriptionInactive(stripeSubscriptionId: string) {
   const rows = await prisma.subscription.findMany({
     where: { stripeSubscriptionId },
   });
+  const stripe = getStripe();
+
   for (const row of rows) {
+    let customerId = row.stripeCustomerId;
+    if (!customerId) {
+      const u = await prisma.user.findUnique({
+        where: { id: row.userId },
+        select: { stripeCustomerId: true },
+      });
+      customerId = u?.stripeCustomerId ?? null;
+    }
+
+    /**
+     * Re-subscribe / refund flows can leave a stale `stripeSubscriptionId` on our row, or Stripe
+     * can deliver `customer.subscription.deleted` for an old sub after a newer one exists. If the
+     * customer still has any paying subscription, mirror that instead of revoking access.
+     */
+    if (customerId) {
+      const list = await stripe.subscriptions.list({
+        customer: customerId,
+        status: "all",
+        limit: 20,
+      });
+      const replacement = list.data.find(subscriptionGrantsCollectorAccess);
+      if (replacement) {
+        await upsertSubscriptionFromStripe({
+          userId: row.userId,
+          customerId,
+          subscription: replacement,
+        });
+        continue;
+      }
+    }
+
     await prisma.subscription.update({
       where: { id: row.id },
       data: {
@@ -112,7 +151,7 @@ export async function syncSubscriptionFromStripeForUser(userId: string): Promise
     limit: 10,
   });
 
-  const active = list.data.find((s) => s.status === "active" || s.status === "trialing");
+  const active = list.data.find(subscriptionGrantsCollectorAccess);
   if (!active) return;
 
   // Capture the first paid invoice references so refund eligibility can be computed immediately
