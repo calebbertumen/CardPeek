@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
+import { ClearInputButton } from "@/components/ui/clear-input-button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -147,6 +148,12 @@ export function CardNameCombobox({
     setOpen(false);
   }, []);
 
+  const clearValue = useCallback(() => {
+    setValue("");
+    setDebounced("");
+    setOpen(false);
+  }, []);
+
   /** Close on Tab / focus leave; defer so list mousedown (preventDefault) keeps focus on input. */
   const closeOnBlur = useCallback(() => {
     window.setTimeout(() => {
@@ -236,7 +243,7 @@ export function CardNameCombobox({
       : null;
 
   return (
-    <div ref={wrapRef} className="min-w-0">
+    <div ref={wrapRef} className="relative min-w-0">
       <Input
         id={id}
         name={name}
@@ -256,8 +263,9 @@ export function CardNameCombobox({
         aria-controls={showNameMenu && listRows.length > 0 ? listId : undefined}
         aria-autocomplete="list"
         role="combobox"
-        className={cn(className)}
+        className={cn(className, value.length > 0 && "pr-9")}
       />
+      {value.length > 0 ? <ClearInputButton onClear={clearValue} aria-label="Clear card name" /> : null}
       {list}
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { ClearInputButton } from "@/components/ui/clear-input-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CardNameCombobox } from "@/components/search/card-name-combobox";
@@ -13,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CONDITION_OPTIONS } from "@/lib/normalize";
+import { cn } from "@/lib/utils";
 import type { ConditionBucket } from "@prisma/client";
 
 export type CardSearchFormDefaults = {
@@ -47,6 +49,11 @@ export function CardSearchFields({
   const [condition, setCondition] = useState<string>(() =>
     String(defaults.condition || "raw_nm"),
   );
+  const [cardNumber, setCardNumber] = useState(() => defaults.cardNumber);
+
+  useEffect(() => {
+    setCardNumber(defaults.cardNumber);
+  }, [defaults.cardNumber]);
 
   const pid = (s: string) => (idPrefix ? `${idPrefix}-${s}` : s);
 
@@ -82,13 +89,19 @@ export function CardSearchFields({
           <Label htmlFor={pid("cardNumber")} className="text-xs">
             No.
           </Label>
-          <Input
-            id={pid("cardNumber")}
-            name="cardNumber"
-            autoComplete="off"
-            className="h-11 w-full px-2"
-            defaultValue={defaults.cardNumber}
-          />
+          <div className="relative">
+            <Input
+              id={pid("cardNumber")}
+              name="cardNumber"
+              autoComplete="off"
+              value={cardNumber}
+              onChange={(e) => setCardNumber(e.target.value)}
+              className={cn("h-11 w-full px-2", cardNumber.length > 0 && "pr-9")}
+            />
+            {cardNumber.length > 0 ? (
+              <ClearInputButton onClear={() => setCardNumber("")} aria-label="Clear card number" />
+            ) : null}
+          </div>
         </div>
         <div className="w-full shrink-0 space-y-1.5 sm:w-44">
           <Label htmlFor={pid("condition-select")} className="text-xs">

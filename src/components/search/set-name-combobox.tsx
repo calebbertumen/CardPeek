@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
+import { ClearInputButton } from "@/components/ui/clear-input-button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import fallbackSetNames from "@/data/pokemon-set-names-fallback.json";
@@ -176,6 +177,11 @@ export function SetNameCombobox({
     setOpen(false);
   }, []);
 
+  const clearValue = useCallback(() => {
+    setValue("");
+    setOpen(false);
+  }, []);
+
   /** Close on Tab / focus leave; defer so list mousedown (preventDefault) keeps focus on input. */
   const closeOnBlur = useCallback(() => {
     window.setTimeout(() => {
@@ -270,7 +276,7 @@ export function SetNameCombobox({
       : null;
 
   return (
-    <div ref={wrapRef} className="min-w-0">
+    <div ref={wrapRef} className="relative min-w-0">
       <Input
         id={id}
         name={name}
@@ -289,8 +295,9 @@ export function SetNameCombobox({
         aria-controls={open && hasDropdownContent ? listId : undefined}
         aria-autocomplete="list"
         role="combobox"
-        className={cn(className)}
+        className={cn(className, value.length > 0 && "pr-9")}
       />
+      {value.length > 0 ? <ClearInputButton onClear={clearValue} aria-label="Clear set name" /> : null}
       {list}
     </div>
   );
