@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getUserSubscriptionSummary } from "@/lib/billing/get-user-plan";
 import { requireDbUser } from "@/lib/require-db-user";
-import { formatNextBillingDate } from "@/lib/format";
+import { formatSubscriptionPeriodEndDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CollectionPreviewCard } from "@/components/dashboard/collection-preview-card";
@@ -27,9 +27,9 @@ export default async function DashboardPage() {
       ? "Starter is free—no charges."
       : subscription.planId === "collector"
         ? subscription.cancelAtPeriodEnd && subscription.currentPeriodEnd
-          ? `Cancelled — Collector access until ${formatNextBillingDate(subscription.currentPeriodEnd)}. No further charges.`
+          ? `Cancelled — Collector access until ${formatSubscriptionPeriodEndDate(subscription.currentPeriodEnd)}. No further charges.`
           : subscription.currentPeriodEnd
-            ? `Renews on ${formatNextBillingDate(subscription.currentPeriodEnd)}.`
+            ? `Renews on ${formatSubscriptionPeriodEndDate(subscription.currentPeriodEnd)}.`
             : "Renewal date will appear here after your subscription is confirmed with Stripe."
         : "";
 
