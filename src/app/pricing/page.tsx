@@ -156,7 +156,7 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
               <li>• Full price range insights</li>
               <li>• Unlimited access to updated market data (fair use applies)</li>
               <li className="font-semibold text-foreground">
-                • Unlimited collection tracking with real-time pricing updates
+                • Unlimited collection tracking with updated pricing when available
               </li>
               <li className="font-semibold text-foreground">• Know exactly what your collection is worth right now</li>
               <li>• No more guessing or overpriced comps</li>
