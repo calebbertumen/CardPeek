@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { getPlan, type PlanId } from "@/lib/billing/plans";
 import { auth } from "@/lib/auth";
 import { getUserPlanId } from "@/lib/billing/get-user-plan";
+import { getCanonicalUserFromSession } from "@/lib/require-db-user";
 import { StripeCheckoutButton } from "@/components/billing/stripe-checkout-button";
 import { syncSubscriptionFromStripeForUser } from "@/services/billing/stripe-provisioning";
 import { cn } from "@/lib/utils";
@@ -52,23 +53,23 @@ type PricingPageProps = {
 
 export default async function PricingPage({ searchParams }: PricingPageProps) {
   const session = await auth();
-  const userId = session?.user?.id;
+  const dbUser = await getCanonicalUserFromSession(session);
   const checkout = pickSearchParam(searchParams.checkout);
 
-  if (userId && checkout === "success") {
+  if (dbUser && checkout === "success") {
     try {
-      await syncSubscriptionFromStripeForUser(userId);
+      await syncSubscriptionFromStripeForUser(dbUser.id);
     } catch (e) {
       console.error("[pricing] post-checkout Stripe sync failed", e);
     }
     redirect("/pricing");
   }
 
-  const currentPlanId = userId ? await getUserPlanId(userId) : null;
+  const currentPlanId = dbUser ? await getUserPlanId(dbUser.id) : null;
   const collector = getPlan("collector");
 
-  const starterIsCurrent = Boolean(userId && currentPlanId === "starter");
-  const collectorIsCurrent = Boolean(userId && currentPlanId === "collector");
+  const starterIsCurrent = Boolean(dbUser && currentPlanId === "starter");
+  const collectorIsCurrent = Boolean(dbUser && currentPlanId === "collector");
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-14 sm:px-6">
@@ -95,7 +96,7 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
           <CardHeader>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="space-y-1.5">
-                <CardTitle className="text-xl">Starter</CardTitle>
+                <CardTitle className="text-xl">Starter (Free)</CardTitle>
                 <CardDescription>Get a quick, reliable estimate of your card&apos;s value.</CardDescription>
               </div>
               {starterIsCurrent ? (
@@ -109,10 +110,12 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
             <p className="text-4xl font-semibold tracking-tight text-primary">$0</p>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>• Unlimited searches (cached data)</li>
-              <li className="font-semibold text-foreground">• 3 lifetime fresh data updates</li>
+              <li>• 3 lifetime fresh data updates</li>
               <li>• Average price based on recent sales</li>
               <li>• Price range insights</li>
               <li>• Preview recent sales (blurred)</li>
+              <li className="font-semibold text-foreground">• Track up to 10 cards in your collection</li>
+              <li>• View your collection&apos;s total value (based on cached data)</li>
             </ul>
             <Button asChild className="w-full rounded-full" variant={starterIsCurrent ? "secondary" : "default"}>
               <Link href="/search">Check a card for free</Link>
@@ -152,7 +155,11 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
               <li>• Accurate pricing from actual transactions</li>
               <li>• Full price range insights</li>
               <li>• Unlimited access to updated market data (fair use applies)</li>
-              <li className="font-semibold text-foreground">• No more guessing or overpriced comps</li>
+              <li className="font-semibold text-foreground">
+                • Unlimited collection tracking with real-time pricing updates
+              </li>
+              <li className="font-semibold text-foreground">• Know exactly what your collection is worth right now</li>
+              <li>• No more guessing or overpriced comps</li>
             </ul>
             <div id="checkout" />
             {!collectorIsCurrent ? (
@@ -168,7 +175,7 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
                 . Full refund available within 5 days of your first purchase only.
               </p>
             ) : null}
-            <CollectorPlanActions userId={userId} currentPlanId={currentPlanId} />
+            <CollectorPlanActions userId={dbUser?.id} currentPlanId={currentPlanId} />
             {collectorIsCurrent ? (
               <Button asChild variant="outline" className="w-full rounded-full">
                 <Link href="/settings/billing">Manage billing &amp; cancellation</Link>

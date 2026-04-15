@@ -8,6 +8,7 @@ import {
 import { ListingCards } from "./listing-cards";
 import { PricingSummary } from "./pricing-summary";
 import type { AccessTier } from "@/lib/billing/access";
+import { AddToCollectionMenu } from "@/components/collection/add-to-collection-menu";
 
 type Props = {
   data: CardMarketView;
@@ -30,7 +31,12 @@ export function SearchResults({ data, tier }: Props) {
   return (
     <div className="mt-12 space-y-10">
       <div className="flex flex-col gap-2">
-        <h2 className="text-lg font-semibold tracking-tight">Results</h2>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <h2 className="text-lg font-semibold tracking-tight">Results</h2>
+          <div className="shrink-0 self-start sm:pt-0.5">
+            <AddToCollectionMenu card={data.card} tier={tier} size="sm" />
+          </div>
+        </div>
         <p className="text-sm text-muted-foreground">
           Based on recent market sales. Updated automatically when needed. Data may not reflect real-time listings.
         </p>

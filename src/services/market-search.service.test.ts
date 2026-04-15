@@ -13,6 +13,17 @@ vi.mock("@/services/pokemon-tcg/pokemon-tcg.service", () => ({
 
 vi.mock("@/services/card-cache.service", () => ({
   upsertCardFromApi: (...args: unknown[]) => upsertCardFromApiMock(...args),
+  findOrUpsertCardForSearch: (input: {
+    normalizedKey: string;
+    name: string;
+    setName?: string | null;
+    cardNumber?: string | null;
+  }) =>
+    upsertCardFromApiMock({
+      name: input.name,
+      setName: input.setName,
+      cardNumber: input.cardNumber,
+    }),
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -44,6 +55,7 @@ vi.mock("@/services/scrape-queue.service", () => ({
 }));
 vi.mock("@/services/scrape-worker.service", () => ({
   processPendingScrapeJobs: vi.fn(),
+  cleanupStaleSoldScrapeJobs: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@/services/sold-cache-wait.service", () => ({
   waitForFreshSoldCache: vi.fn(),
@@ -162,6 +174,7 @@ describe("searchCardMarketData (lifetime updated lookups)", () => {
       normalizedCardKey: "pikachu|base set|25",
     };
 
+    cardFindUniqueMock.mockResolvedValueOnce(null);
     cardFindUniqueMock.mockResolvedValueOnce(cardRow);
 
     cardCacheFindUniqueMock.mockResolvedValueOnce({

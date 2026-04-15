@@ -11,7 +11,7 @@ export default function PrivacyPage() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-14 sm:px-6">
       <h1 className="text-3xl font-semibold tracking-tight">Privacy Policy</h1>
-      <p className="mt-2 text-sm text-muted-foreground">Effective Date: April 10, 2026</p>
+      <p className="mt-2 text-sm text-muted-foreground">Effective Date: April 14, 2026</p>
 
       <div className="mt-8 space-y-8 text-sm leading-relaxed text-muted-foreground">
         <section className="space-y-3">
@@ -38,8 +38,8 @@ export default function PrivacyPage() {
           </p>
           <ul className="list-inside list-disc space-y-2 pl-1">
             <li>Search queries (e.g., cards you look up)</li>
-            <li>Watchlist and saved preferences</li>
-            <li>Interaction data (features used, pages visited, timestamps)</li>
+            <li>Collection data (cards you add, condition selections, quantities)</li>
+            <li>Saved preferences and interactions (features used, pages visited, timestamps)</li>
             <li>Device and browser information (e.g., IP address, device type)</li>
           </ul>
           <p>
@@ -64,7 +64,8 @@ export default function PrivacyPage() {
           <ul className="list-inside list-disc space-y-2 pl-1">
             <li>is used to generate pricing insights</li>
             <li>may be cached and stored for performance optimization</li>
-            <li>is not guaranteed to be real-time or complete</li>
+            <li>may be reused across users</li>
+            <li>is not guaranteed to be real-time, complete, or error-free</li>
           </ul>
         </section>
 
@@ -73,9 +74,11 @@ export default function PrivacyPage() {
           <p>We use your information to:</p>
           <ul className="list-inside list-disc space-y-2 pl-1">
             <li>Provide, operate, and maintain the app</li>
+            <li>Enable collection features (saving, organizing, and displaying your card collection)</li>
+            <li>Calculate and display collection value using cached pricing data</li>
             <li>Process subscriptions and manage billing</li>
-            <li>Display pricing insights based on market data</li>
-            <li>Send transactional notifications (e.g., billing updates, price alerts)</li>
+            <li>Display pricing insights based on marketplace data</li>
+            <li>Send transactional notifications (e.g., billing updates)</li>
             <li>Improve app functionality, performance, and user experience</li>
             <li>Monitor usage trends and prevent fraud or abuse</li>
             <li>Enforce our Terms of Service</li>
@@ -83,11 +86,33 @@ export default function PrivacyPage() {
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">4. Data Sharing</h2>
+          <h2 className="text-lg font-semibold text-foreground">4. Collection Feature Data</h2>
+          <p>When you use the Collection feature:</p>
+          <ul className="list-inside list-disc space-y-2 pl-1">
+            <li>Cards you add are stored as part of your account</li>
+            <li>This may include card identity, condition, and quantity</li>
+            <li>Collection values are calculated using cached market data, not newly generated data for all users</li>
+          </ul>
+          <p>
+            <strong className="text-foreground">Important Notes:</strong>
+          </p>
+          <ul className="list-inside list-disc space-y-2 pl-1">
+            <li>
+              Pricing shown in your collection may be based on previously cached data and may not always reflect the
+              most recent market activity
+            </li>
+            <li>Free-tier users may see delayed or unavailable pricing data</li>
+            <li>Paid users may receive more up-to-date pricing based on system refresh rules</li>
+            <li>Your collection is private and is not visible to other users.</li>
+          </ul>
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold text-foreground">5. Data Sharing</h2>
           <p>We do not sell your personal data.</p>
           <p>We may share your information with:</p>
           <ul className="list-inside list-disc space-y-2 pl-1">
-            <li>Service providers (e.g., hosting, analytics, infrastructure)</li>
+            <li>Service providers (e.g., hosting, infrastructure, analytics)</li>
             <li>Stripe for payment processing and billing</li>
             <li>Third-party APIs or data providers used to retrieve marketplace data</li>
             <li>Legal authorities, if required by law or to protect our rights</li>
@@ -96,7 +121,7 @@ export default function PrivacyPage() {
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">5. Subscriptions, Billing, and Refunds</h2>
+          <h2 className="text-lg font-semibold text-foreground">6. Subscriptions, Billing, and Refunds</h2>
           <p>CardPeek offers paid subscription plans.</p>
           <ul className="list-inside list-disc space-y-2 pl-1">
             <li>Subscriptions may renew automatically unless canceled</li>
@@ -109,9 +134,14 @@ export default function PrivacyPage() {
           <ul className="list-inside list-disc space-y-2 pl-1">
             <li>A 5-day refund window applies to first-time subscription purchases only</li>
             <li>Refund requests must be made within 5 days of the initial purchase</li>
-            <li>Refunds are not available after 5 days</li>
-            <li>Refunds are not available for renewals</li>
-            <li>Refunds are not available for re-subscriptions or plan changes</li>
+            <li>
+              Refunds are not available:
+              <ul className="mt-2 list-inside list-disc space-y-1 pl-4">
+                <li>after 5 days</li>
+                <li>for renewals</li>
+                <li>for re-subscriptions or plan changes</li>
+              </ul>
+            </li>
             <li>Each user is eligible for one refund only</li>
           </ul>
           <p>If a refund is issued:</p>
@@ -138,7 +168,7 @@ export default function PrivacyPage() {
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">6. Data Storage and Security</h2>
+          <h2 className="text-lg font-semibold text-foreground">7. Data Storage and Security</h2>
           <p>
             We implement reasonable administrative, technical, and organizational safeguards to protect your
             information. However:
@@ -150,11 +180,11 @@ export default function PrivacyPage() {
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">7. Data Retention</h2>
+          <h2 className="text-lg font-semibold text-foreground">8. Data Retention</h2>
           <p>We retain data only as long as necessary to:</p>
           <ul className="list-inside list-disc space-y-2 pl-1">
             <li>Provide our services</li>
-            <li>Maintain system performance (e.g., cached data)</li>
+            <li>Maintain system performance (e.g., cached pricing data)</li>
             <li>Comply with legal obligations</li>
             <li>Resolve disputes and enforce agreements</li>
           </ul>
@@ -162,7 +192,7 @@ export default function PrivacyPage() {
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">8. Your Rights</h2>
+          <h2 className="text-lg font-semibold text-foreground">9. Your Rights</h2>
           <p>
             Depending on your location (e.g., California, EU), you may have rights including:
           </p>
@@ -185,7 +215,7 @@ export default function PrivacyPage() {
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">9. Cookies and Tracking Technologies</h2>
+          <h2 className="text-lg font-semibold text-foreground">10. Cookies and Tracking Technologies</h2>
           <p>We may use cookies or similar technologies to:</p>
           <ul className="list-inside list-disc space-y-2 pl-1">
             <li>Maintain user sessions</li>
@@ -196,7 +226,7 @@ export default function PrivacyPage() {
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">10. Third-Party Services</h2>
+          <h2 className="text-lg font-semibold text-foreground">11. Third-Party Services</h2>
           <p>We use third-party services such as:</p>
           <ul className="list-inside list-disc space-y-2 pl-1">
             <li>Stripe (payments and billing)</li>
@@ -209,13 +239,13 @@ export default function PrivacyPage() {
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">11. Children&apos;s Privacy</h2>
+          <h2 className="text-lg font-semibold text-foreground">12. Children&apos;s Privacy</h2>
           <p>CardPeek is not intended for individuals under 13 years old.</p>
           <p>We do not knowingly collect personal information from children.</p>
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">12. Changes to This Policy</h2>
+          <h2 className="text-lg font-semibold text-foreground">13. Changes to This Policy</h2>
           <p>We may update this Privacy Policy from time to time.</p>
           <ul className="list-inside list-disc space-y-2 pl-1">
             <li>Updates will be posted on this page</li>
@@ -224,7 +254,7 @@ export default function PrivacyPage() {
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">13. Contact Us</h2>
+          <h2 className="text-lg font-semibold text-foreground">14. Contact Us</h2>
           <p>
             If you have questions about this Privacy Policy:{" "}
             <a

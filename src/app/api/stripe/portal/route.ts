@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { getCanonicalUserFromSession } from "@/lib/require-db-user";
 import { getStripe } from "@/lib/stripe/server";
 import { getAppUrl } from "@/lib/stripe/config";
 
 export async function POST() {
   const session = await auth();
-  const userId = session?.user?.id;
-  if (!userId) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
+  const dbUser = await getCanonicalUserFromSession(session);
+  if (!dbUser) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
+  const userId = dbUser.id;
 
   const user = await prisma.user.findUnique({
     where: { id: userId },

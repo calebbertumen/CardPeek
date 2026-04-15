@@ -3,9 +3,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getUserSubscriptionSummary } from "@/lib/billing/get-user-plan";
+import { requireDbUser } from "@/lib/require-db-user";
 import { formatNextBillingDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CollectionPreviewCard } from "@/components/dashboard/collection-preview-card";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -17,14 +19,19 @@ export default async function DashboardPage() {
     redirect("/login?callbackUrl=/dashboard");
   }
 
-  const subscription = await getUserSubscriptionSummary(session.user.id);
+  const dbUser = await requireDbUser(session);
+  const subscription = await getUserSubscriptionSummary(dbUser.id);
 
-  const nextBillingLine =
+  const scheduleLine =
     subscription.planId === "starter"
       ? "Starter is free—no charges."
-      : subscription.currentPeriodEnd
-        ? formatNextBillingDate(subscription.currentPeriodEnd)
-        : "Renewal date will appear here after your subscription is confirmed with Stripe.";
+      : subscription.planId === "collector"
+        ? subscription.cancelAtPeriodEnd && subscription.currentPeriodEnd
+          ? `Cancelled — Collector access until ${formatNextBillingDate(subscription.currentPeriodEnd)}. No further charges.`
+          : subscription.currentPeriodEnd
+            ? `Renews on ${formatNextBillingDate(subscription.currentPeriodEnd)}.`
+            : "Renewal date will appear here after your subscription is confirmed with Stripe."
+        : "";
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
@@ -49,9 +56,13 @@ export default async function DashboardPage() {
               </div>
               <div className="space-y-1">
                 <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  {subscription.planId === "starter" ? "Billing" : "Next charge"}
+                  {subscription.planId === "starter"
+                    ? "Billing"
+                    : subscription.planId === "collector" && subscription.cancelAtPeriodEnd
+                      ? "Status"
+                      : "Next charge"}
                 </dt>
-                <dd className="text-sm leading-relaxed text-foreground">{nextBillingLine}</dd>
+                <dd className="text-sm leading-relaxed text-foreground">{scheduleLine}</dd>
               </div>
             </dl>
             <div className="flex flex-wrap gap-2">
@@ -66,6 +77,8 @@ export default async function DashboardPage() {
             </div>
           </CardContent>
         </Card>
+
+        <CollectionPreviewCard userId={dbUser.id} />
       </div>
     </div>
   );

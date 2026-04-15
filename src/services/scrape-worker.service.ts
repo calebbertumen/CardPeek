@@ -45,6 +45,11 @@ async function failStalePendingSoldJobs(): Promise<void> {
   }
 }
 
+export async function cleanupStaleSoldScrapeJobs(): Promise<void> {
+  await failStalePendingSoldJobs();
+  await failStaleRunningSoldJobs();
+}
+
 async function failStaleRunningSoldJobs(): Promise<void> {
   const cutoff = new Date(Date.now() - STALE_RUNNING_MS);
   const stale = await prisma.scrapeJob.findMany({
@@ -84,8 +89,7 @@ export async function processPendingScrapeJobs(input?: { limit?: number }): Prom
   let completed = 0;
   let failed = 0;
 
-  await failStalePendingSoldJobs();
-  await failStaleRunningSoldJobs();
+  await cleanupStaleSoldScrapeJobs();
 
   for (let i = 0; i < limit; i += 1) {
     const next = await prisma.scrapeJob.findFirst({

@@ -1,5 +1,7 @@
+import type { Session } from "next-auth";
 import { prisma } from "@/lib/db";
 import { getPlan, type PlanId } from "@/lib/billing/plans";
+import { getCanonicalUserFromSession } from "@/lib/require-db-user";
 import { syncSubscriptionFromStripeForUser } from "@/services/billing/stripe-provisioning";
 import {
   canUserReceiveCollectorRefund,
@@ -20,10 +22,42 @@ export type UserBillingState = UserSubscriptionSummary & {
 };
 
 /**
+ * If Stripe still shows an active Collector sub but our DB flag is stale (e.g. missed webhook),
+ * pull from Stripe once. Scoped to users we know have used Stripe Collector to avoid API noise
+ * on every Starter with only an abandoned Checkout customer id.
+ */
+async function maybeHealCollectorFromStripe(userId: string): Promise<void> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { collectorTierActive: true, stripeCustomerId: true, hasEverPurchasedCollector: true },
+  });
+  if (!user || user.collectorTierActive || !user.stripeCustomerId) return;
+
+  if (!user.hasEverPurchasedCollector) {
+    const hadCollectorRow = await prisma.subscription.findFirst({
+      where: { userId, planId: "collector" },
+      select: { id: true },
+    });
+    if (!hadCollectorRow) return;
+  }
+
+  await syncSubscriptionFromStripeForUser(userId);
+}
+
+/** Prefer over `getUserPlanId(session.user.id)` so JWT `sub` always maps to the same row Stripe updates. */
+export async function getUserPlanIdForSession(session: Session | null | undefined): Promise<PlanId> {
+  const u = await getCanonicalUserFromSession(session);
+  if (!u) return "starter";
+  return getUserPlanId(u.id);
+}
+
+/**
  * Plan resolution: `User.collectorTierActive` is primary; legacy `Subscription` rows self-heal on read.
  */
 export async function getUserPlanId(userId: string | null | undefined): Promise<PlanId> {
   if (!userId) return "starter";
+
+  await maybeHealCollectorFromStripe(userId);
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -50,12 +84,30 @@ export async function getUserSubscriptionSummary(userId: string): Promise<UserSu
   const planId = await getUserPlanId(userId);
   const plan = getPlan(planId);
 
+  /**
+   * While Collector is active, `maybeHealCollectorFromStripe` intentionally skips Stripe calls.
+   * Cancellation-at-period-end and period end dates still need to match Stripe for accurate UI.
+   */
+  if (planId === "collector") {
+    const u = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { stripeCustomerId: true },
+    });
+    if (u?.stripeCustomerId) {
+      try {
+        await syncSubscriptionFromStripeForUser(userId);
+      } catch (e) {
+        console.warn("[billing] getUserSubscriptionSummary Stripe sync failed", e);
+      }
+    }
+  }
+
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { collectorTierActive: true },
   });
 
-  let sub = await prisma.subscription.findFirst({
+  const sub = await prisma.subscription.findFirst({
     where: { userId, planId: "collector" },
     orderBy: { updatedAt: "desc" },
     select: {
@@ -63,22 +115,6 @@ export async function getUserSubscriptionSummary(userId: string): Promise<UserSu
       cancelAtPeriodEnd: true,
     },
   });
-
-  if (
-    planId === "collector" &&
-    sub?.cancelAtPeriodEnd &&
-    !sub.subscriptionCurrentPeriodEnd
-  ) {
-    await syncSubscriptionFromStripeForUser(userId);
-    sub = await prisma.subscription.findFirst({
-      where: { userId, planId: "collector" },
-      orderBy: { updatedAt: "desc" },
-      select: {
-        subscriptionCurrentPeriodEnd: true,
-        cancelAtPeriodEnd: true,
-      },
-    });
-  }
 
   return {
     planId,

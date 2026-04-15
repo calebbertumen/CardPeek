@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { getCanonicalUserFromSession } from "@/lib/require-db-user";
 import {
   cancelCollectorSubscriptionForUser,
   type CancelCollectorIntent,
@@ -7,10 +8,11 @@ import {
 
 export async function POST(req: Request) {
   const session = await auth();
-  const userId = session?.user?.id;
-  if (!userId) {
+  const dbUser = await getCanonicalUserFromSession(session);
+  if (!dbUser) {
     return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
   }
+  const userId = dbUser.id;
 
   let intent: CancelCollectorIntent = "period_end";
   try {

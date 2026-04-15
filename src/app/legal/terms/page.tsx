@@ -11,7 +11,7 @@ export default function TermsPage() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-14 sm:px-6">
       <h1 className="text-3xl font-semibold tracking-tight">Terms of Service</h1>
-      <p className="mt-2 text-sm text-muted-foreground">Effective Date: April 10, 2026</p>
+      <p className="mt-2 text-sm text-muted-foreground">Effective Date: April 14, 2026</p>
 
       <div className="mt-8 space-y-8 text-sm leading-relaxed text-muted-foreground">
         <section className="space-y-3">
@@ -23,29 +23,48 @@ export default function TermsPage() {
           </p>
         </section>
 
-        <section className="space-y-3">
+        <section className="space-y-4">
           <h2 className="text-lg font-semibold text-foreground">2. Description of Service</h2>
           <p>CardPeek provides tools that allow users to:</p>
           <ul className="list-inside list-disc space-y-2 pl-1">
             <li>Search for trading card pricing data</li>
             <li>View recent sales data</li>
             <li>Access pricing insights based on marketplace activity</li>
+            <li>Build and track a personal collection of trading cards</li>
           </ul>
-          <p>
-            <strong className="text-foreground">Important Disclosures</strong>
-          </p>
-          <ul className="list-inside list-disc space-y-2 pl-1">
-            <li>CardPeek does not provide real-time data</li>
-            <li>Data is collected and updated periodically</li>
-            <li>Information may be delayed, incomplete, or inaccurate</li>
-            <li>
-              CardPeek is an independent tool and is not affiliated with, endorsed by, or sponsored by any marketplace
-              (including eBay)
-            </li>
-            <li>
-              Users should independently verify all information before making purchasing or financial decisions.
-            </li>
-          </ul>
+
+          <div className="space-y-3 pt-1">
+            <p>
+              <strong className="text-foreground">Collection Feature</strong>
+            </p>
+            <p>CardPeek allows users to save and organize cards into a personal collection.</p>
+            <ul className="list-inside list-disc space-y-2 pl-1">
+              <li>Users may add cards identified by card identity and condition</li>
+              <li>Collection values are calculated using cached marketplace data</li>
+              <li>Pricing displayed in collections may not always reflect real-time market conditions</li>
+              <li>Free-tier users may experience limited or delayed pricing updates</li>
+              <li>Paid users may receive refreshed pricing based on system rules</li>
+              <li>Collections are private to each user and are not shared publicly.</li>
+            </ul>
+          </div>
+
+          <div className="space-y-3">
+            <p>
+              <strong className="text-foreground">Important Disclosures</strong>
+            </p>
+            <ul className="list-inside list-disc space-y-2 pl-1">
+              <li>CardPeek does not provide real-time data</li>
+              <li>Data is collected and updated periodically</li>
+              <li>Information may be delayed, incomplete, or inaccurate</li>
+              <li>
+                CardPeek is an independent tool and is not affiliated with, endorsed by, or sponsored by any marketplace
+                (including eBay)
+              </li>
+              <li>
+                Users should independently verify all information before making purchasing or financial decisions.
+              </li>
+            </ul>
+          </div>
         </section>
 
         <section className="space-y-3">
@@ -152,6 +171,7 @@ export default function TermsPage() {
             <li>Attempt to reverse engineer, copy, or exploit the platform</li>
             <li>Interfere with system performance or security</li>
             <li>Use bots, scripts, or automation to abuse the service</li>
+            <li>Circumvent feature limitations, including subscription or usage restrictions</li>
           </ul>
         </section>
 
@@ -166,13 +186,30 @@ export default function TermsPage() {
             <li>That all relevant listings are captured</li>
           </ul>
           <p>
-            Data is provided for informational purposes only and should not be relied upon as financial or investment
-            advice.
+            Data, including pricing shown in search results and collections, is provided for informational purposes only
+            and should not be relied upon as financial or investment advice.
           </p>
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">7. Intellectual Property</h2>
+          <h2 className="text-lg font-semibold text-foreground">7. Collection and Data Usage</h2>
+          <ul className="list-inside list-disc space-y-2 pl-1">
+            <li>Collection data (cards saved, conditions, quantities) is stored as part of your account</li>
+            <li>
+              Pricing shown in collections is derived from cached marketplace data and may be shared across users
+            </li>
+            <li>CardPeek does not guarantee that collection values reflect current market prices</li>
+            <li>Free users may see limited or outdated pricing data</li>
+            <li>Paid users may receive refreshed pricing based on system behavior</li>
+            <li>
+              We reserve the right to modify how collection data is stored, grouped, or displayed to improve performance
+              and functionality.
+            </li>
+          </ul>
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold text-foreground">8. Intellectual Property</h2>
           <p>
             All content, features, design, and functionality of CardPeek are owned by us and protected by intellectual
             property laws.
@@ -188,8 +225,12 @@ export default function TermsPage() {
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">8. Third-Party Services</h2>
-          <p>CardPeek relies on third-party services (including Stripe and external data providers).</p>
+          <h2 className="text-lg font-semibold text-foreground">9. Third-Party Services</h2>
+          <p>CardPeek relies on third-party services, including:</p>
+          <ul className="list-inside list-disc space-y-2 pl-1">
+            <li>Stripe (payments and billing)</li>
+            <li>External marketplace data providers</li>
+          </ul>
           <p>We are not responsible for:</p>
           <ul className="list-inside list-disc space-y-2 pl-1">
             <li>Third-party outages</li>
@@ -200,7 +241,7 @@ export default function TermsPage() {
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">9. Termination</h2>
+          <h2 className="text-lg font-semibold text-foreground">10. Termination</h2>
           <p>We may suspend or terminate your access at any time, without notice, if you:</p>
           <ul className="list-inside list-disc space-y-2 pl-1">
             <li>Violate these Terms</li>
@@ -210,7 +251,7 @@ export default function TermsPage() {
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">10. Limitation of Liability</h2>
+          <h2 className="text-lg font-semibold text-foreground">11. Limitation of Liability</h2>
           <p>To the fullest extent permitted by law, CardPeek is not liable for:</p>
           <ul className="list-inside list-disc space-y-2 pl-1">
             <li>Financial losses</li>
@@ -223,7 +264,7 @@ export default function TermsPage() {
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">11. Disclaimer of Warranties</h2>
+          <h2 className="text-lg font-semibold text-foreground">12. Disclaimer of Warranties</h2>
           <p>
             The service is provided &ldquo;as is&rdquo; and &ldquo;as available&rdquo; without warranties of any kind.
           </p>
@@ -235,7 +276,7 @@ export default function TermsPage() {
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">12. Changes to Terms</h2>
+          <h2 className="text-lg font-semibold text-foreground">13. Changes to Terms</h2>
           <p>We may update these Terms at any time.</p>
           <ul className="list-inside list-disc space-y-2 pl-1">
             <li>Updates will be posted with a revised &ldquo;Effective Date&rdquo;</li>
@@ -244,12 +285,12 @@ export default function TermsPage() {
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">13. Governing Law</h2>
+          <h2 className="text-lg font-semibold text-foreground">14. Governing Law</h2>
           <p>These Terms are governed by the laws of the State of California, United States.</p>
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">14. Contact</h2>
+          <h2 className="text-lg font-semibold text-foreground">15. Contact</h2>
           <p>
             If you have questions about these Terms:{" "}
             <a

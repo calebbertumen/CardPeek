@@ -26,20 +26,14 @@ export async function SiteHeader() {
         </Link>
 
         <nav className="flex flex-1 items-center justify-end gap-2 sm:gap-3 md:gap-8">
-          <Link
-            href="/pricing"
-            className="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:inline"
-          >
-            Pricing
-          </Link>
-          <Link
-            href="/pricing"
-            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:hidden"
-          >
-            Plans
-          </Link>
           {session?.user ? (
             <>
+              <Link
+                href="/search"
+                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Search
+              </Link>
               <Link
                 href="/dashboard"
                 className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
@@ -62,6 +56,18 @@ export async function SiteHeader() {
             </>
           ) : (
             <>
+              <Link
+                href="/pricing"
+                className="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:inline"
+              >
+                Pricing
+              </Link>
+              <Link
+                href="/pricing"
+                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:hidden"
+              >
+                Plans
+              </Link>
               <Link
                 href="/login"
                 className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"

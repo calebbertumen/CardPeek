@@ -137,6 +137,27 @@ export async function upsertCardFromApi(input: {
   });
 }
 
+/**
+ * When the search form normalizes to the same key as a stored `Card`, skip the Pokémon TCG API round trip.
+ * First-time or ambiguous queries still call {@link upsertCardFromApi}.
+ */
+export async function findOrUpsertCardForSearch(input: {
+  normalizedKey: string;
+  name: string;
+  setName?: string | null;
+  cardNumber?: string | null;
+}): Promise<Card> {
+  const existing = await prisma.card.findUnique({
+    where: { normalizedCardKey: input.normalizedKey },
+  });
+  if (existing) return existing;
+  return upsertCardFromApi({
+    name: input.name,
+    setName: input.setName ?? null,
+    cardNumber: input.cardNumber ?? null,
+  });
+}
+
 export function listingsFromDtos(rows: SoldCompListingDTO[], takeCount: number): {
   stats: ReturnType<typeof computeStats>;
   listingsCount: number;

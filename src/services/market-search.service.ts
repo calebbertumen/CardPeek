@@ -2,12 +2,12 @@ import type { ConditionBucket } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { buildCacheKey, normalizeCardKeyParts } from "@/lib/normalize";
 import type { Entitlements } from "@/lib/billing/entitlements";
-import { upsertCardFromApi } from "@/services/card-cache.service";
+import { findOrUpsertCardForSearch } from "@/services/card-cache.service";
 import { fetchPokemonCardBestMatch } from "@/services/pokemon-tcg/pokemon-tcg.service";
 import { queueScrapeRefreshIfNeeded } from "@/services/scrape-queue.service";
 import { logSoldScrapeMetric } from "@/services/apify/scrape-metrics";
 import { waitForFreshSoldCache } from "@/services/sold-cache-wait.service";
-import { processPendingScrapeJobs } from "@/services/scrape-worker.service";
+import { cleanupStaleSoldScrapeJobs, processPendingScrapeJobs } from "@/services/scrape-worker.service";
 import { computeDisplayedAveragePrice } from "@/lib/pricing/compute-displayed-average-price";
 import {
   getFreshScrapeEntitlementForUser,
@@ -92,6 +92,11 @@ export async function searchCardMarketData(input: {
   requestedConditionBucket: ConditionBucket;
   entitlements: Entitlements;
   userId?: string | null;
+  /**
+   * When false, Starter users will not be allowed to queue (or consume) lifetime fresh scrapes.
+   * This is used for passive views (e.g. collection) to prevent Free-tier scrape loopholes.
+   */
+  allowStarterFreshScrape?: boolean;
 }): Promise<MarketSearchResult> {
   const conditionBucket = input.entitlements.canUseFilters
     ? input.requestedConditionBucket
@@ -105,10 +110,12 @@ export async function searchCardMarketData(input: {
 
   const tier = input.entitlements.tier;
   const userId = input.userId ?? null;
+  const allowStarterFreshScrape = input.allowStarterFreshScrape !== false;
 
   const card =
     tier !== "preview"
-      ? await upsertCardFromApi({
+      ? await findOrUpsertCardForSearch({
+          normalizedKey,
           name: input.name,
           setName: input.setName ?? null,
           cardNumber: input.cardNumber ?? null,
@@ -118,6 +125,11 @@ export async function searchCardMarketData(input: {
            * Logged-in searches store `Card.normalizedCardKey` from the TCG API match (canonical name/set/number).
            * Preview used to key only on raw form text, so keys often differed (e.g. missing #) and cache lookups failed.
            */
+          const byRawKey = await prisma.card.findUnique({
+            where: { normalizedCardKey: normalizedKey },
+          });
+          if (byRawKey) return byRawKey;
+
           const dto = await fetchPokemonCardBestMatch({
             name: input.name,
             setName: input.setName ?? null,
@@ -160,15 +172,25 @@ export async function searchCardMarketData(input: {
   const statsPre = await getCardSearchStats(card.normalizedCardKey);
   const policy = getCardCachePolicy(statsPre);
   const ttlMs = cachePolicyTtlMs(policy);
-  await recordCardSearchEvent(card.normalizedCardKey, userId);
 
   const cacheKey = buildCacheKey(card.normalizedCardKey, conditionBucket);
-  let existing = await prisma.cardCache.findUnique({
-    where: { cacheKey },
-    include: { listings: true },
-  });
+  let existing = (
+    await Promise.all([
+      prisma.cardCache.findUnique({
+        where: { cacheKey },
+        include: { listings: true },
+      }),
+      recordCardSearchEvent(card.normalizedCardKey, userId),
+    ])
+  )[0];
 
   const now = Date.now();
+  const cacheFreshForCleanup = existing ? now - existing.lastScrapedAt.getTime() < ttlMs : false;
+  /** Stale-job cleanup can touch many rows; skip when this snapshot is already within TTL (no scrape path needed). */
+  if (!cacheFreshForCleanup) {
+    await cleanupStaleSoldScrapeJobs();
+  }
+
   const isFresh = existing ? now - existing.lastScrapedAt.getTime() < ttlMs : false;
   const isStale = existing ? !isFresh : true;
 
@@ -196,7 +218,7 @@ export async function searchCardMarketData(input: {
   // Starter: allow up to 3 lifetime updated lookups (scrape runs) when cache is missing or stale.
   let starterDidQueueNew = false;
   let starterScrapePending = false;
-  if (isStale && tier === "starter" && userId) {
+  if (allowStarterFreshScrape && isStale && tier === "starter" && userId) {
     const entitlement = await getFreshScrapeEntitlementForUser({ tier, userId });
     if (entitlement.allowed) {
       const starterQueueResult = await queueStarterFreshScrapeIfAllowed({
@@ -212,7 +234,43 @@ export async function searchCardMarketData(input: {
     }
   }
 
-  const backgroundRefreshPending = scrapeRefreshPending || starterScrapePending;
+  let backgroundRefreshPending = scrapeRefreshPending || starterScrapePending;
+
+  /**
+   * Collector: run at least one queued job when we still have cached pricing but TTL says stale.
+   * Collection and other passive views never called `processPendingScrapeJobs`, so "Refreshing…" could stick indefinitely.
+   */
+  if (
+    existing &&
+    tier === "collector" &&
+    input.entitlements.canTriggerRefresh &&
+    isStale &&
+    backgroundRefreshPending
+  ) {
+    await processPendingScrapeJobs({ limit: 1 });
+    existing = await prisma.cardCache.findUnique({
+      where: { cacheKey },
+      include: { listings: true },
+    });
+    if (existing) {
+      const nowAfter = Date.now();
+      const freshAfter = nowAfter - existing.lastScrapedAt.getTime() < ttlMs;
+      if (freshAfter) {
+        scrapeRefreshPending = false;
+        starterScrapePending = false;
+      } else {
+        const still = await prisma.scrapeJob.findFirst({
+          where: { cacheKey, kind: "sold", status: { in: ["pending", "running"] } },
+          select: { id: true },
+        });
+        if (!still) {
+          scrapeRefreshPending = false;
+          starterScrapePending = false;
+        }
+      }
+    }
+    backgroundRefreshPending = scrapeRefreshPending || starterScrapePending;
+  }
 
   const cacheStatus: "hit" | "stale" | "miss" = !existing ? "miss" : isFresh ? "hit" : "stale";
   logCachePolicyDecision({

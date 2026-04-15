@@ -9,6 +9,7 @@ import {
 import { searchDefaultsFromUrlParams, type SearchPageFormDefaults } from "@/lib/search-url";
 import { normalizeConditionBucket } from "@/lib/normalize";
 import { getUserPlanId } from "@/lib/billing/get-user-plan";
+import { getCanonicalUserFromSession } from "@/lib/require-db-user";
 import type { AccessTier } from "@/lib/billing/access";
 import { getTierEntitlements } from "@/lib/billing/entitlements";
 import { searchCardMarketData } from "@/services/market-search.service";
@@ -61,7 +62,8 @@ export async function searchCardAction(
 ): Promise<SearchCardState> {
   const debitAnonymousQuota = options.debitAnonymousQuota !== false;
   const session = await auth();
-  const tier: AccessTier = session?.user?.id ? await getUserPlanId(session.user.id) : "preview";
+  const dbUser = await getCanonicalUserFromSession(session);
+  const tier: AccessTier = dbUser ? await getUserPlanId(dbUser.id) : "preview";
   const entitlements = getTierEntitlements(tier);
 
   const name = formData.get("name")?.toString().trim();
@@ -77,7 +79,7 @@ export async function searchCardAction(
 
   const jar = await cookies();
   const aid = jar.get(ANONYMOUS_COOKIE)?.value ?? null;
-  if (!session?.user?.id && !aid) {
+  if (!dbUser && !aid) {
     return { ok: false, code: "UNKNOWN", message: "Missing session. Please refresh the page." };
   }
 
@@ -85,8 +87,8 @@ export async function searchCardAction(
   if (debitAnonymousQuota && tier === "collector") {
     const gate = await enforceAndRecordDailySearch({
       entitlements,
-      userId: session?.user?.id ?? null,
-      anonymousId: session?.user?.id ? null : aid,
+      userId: dbUser?.id ?? null,
+      anonymousId: dbUser ? null : aid,
     });
     if (!gate.ok) {
       return {
@@ -98,8 +100,8 @@ export async function searchCardAction(
     }
   }
 
-  if (tier === "starter" && session?.user?.id) {
-    await releaseOrphanedStarterReservation(session.user.id);
+  if (tier === "starter" && dbUser) {
+    await releaseOrphanedStarterReservation(dbUser.id);
   }
 
   try {
@@ -109,7 +111,7 @@ export async function searchCardAction(
       cardNumber,
       requestedConditionBucket: conditionBucket,
       entitlements,
-      userId: session?.user?.id ?? null,
+      userId: dbUser?.id ?? null,
     });
 
     if (result.kind === "no_data") {

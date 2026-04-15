@@ -105,10 +105,14 @@ export function BillingCancelPanel({
       </CardHeader>
       <CardContent className="space-y-4">
         {cancelAtPeriodEnd ? (
-          <p className="text-sm text-foreground">
-            Your subscription is already set to cancel. Access continues until{" "}
-            <strong>{periodLabel ?? "the end of your billing period"}</strong>. No further charges.
-          </p>
+          <div className="space-y-2 rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm">
+            <p className="font-medium text-foreground">Subscription cancelled</p>
+            <p className="text-muted-foreground">
+              Collector remains active until{" "}
+              <strong className="text-foreground">{periodLabel ?? "the end of your billing period"}</strong>{" "}
+              (end of the current cycle). You won&apos;t be charged again.
+            </p>
+          </div>
         ) : eligible ? (
           <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
             <p className="font-medium text-foreground">You are eligible for a full refund if you cancel now.</p>

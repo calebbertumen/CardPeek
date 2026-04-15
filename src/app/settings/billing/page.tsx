@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getUserBillingState } from "@/lib/billing/get-user-plan";
+import { requireDbUser } from "@/lib/require-db-user";
 import { BillingCancelPanel } from "@/components/billing/billing-cancel-panel";
 import { Button } from "@/components/ui/button";
 
@@ -16,7 +17,8 @@ export default async function BillingSettingsPage() {
     redirect("/login?callbackUrl=/settings/billing");
   }
 
-  const billing = await getUserBillingState(session.user.id);
+  const dbUser = await requireDbUser(session);
+  const billing = await getUserBillingState(dbUser.id);
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-12 sm:px-6">
