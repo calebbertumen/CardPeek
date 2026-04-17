@@ -18,6 +18,7 @@ export function ClearInputButton({
   return (
     <button
       type="button"
+      tabIndex={-1}
       onMouseDown={(e) => e.preventDefault()}
       onClick={() => onClear()}
       className={cn(

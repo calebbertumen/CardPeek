@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { pollCardSearchAction, searchCardStateAction, type SearchCardState } from "@/actions/search-card";
@@ -10,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { CardSearchFields } from "@/components/search/card-search-fields";
 import { searchBarWidthClassName } from "@/components/search/search-bar-layout";
 import { SearchBarShell } from "@/components/search/search-bar-shell";
+import { MarketDataUpdatingBanner } from "./market-data-updating-banner";
 import { RefreshKick } from "./refresh-kick";
 import { SearchResults } from "./search-results";
 import { SearchResultsSkeleton } from "./search-results-skeleton";
@@ -24,6 +24,9 @@ function SubmitButton({ pending }: { pending: boolean }) {
 
 function ResultsSection({ state, pending }: { state: SearchCardState | null; pending: boolean }) {
   if (pending) {
+    return <SearchResultsSkeleton />;
+  }
+  if (state?.ok === false && state.code === "NO_DATA" && state.isRefreshing) {
     return <SearchResultsSkeleton />;
   }
   if (state?.ok) {
@@ -41,18 +44,11 @@ function ResultsSection({ state, pending }: { state: SearchCardState | null; pen
   }
   if (state?.ok === false && state.code === "NO_DATA") {
     const t = state.tier;
-    const waitingOnScrape = state.isRefreshing === true;
     return (
       <div className="mt-10 rounded-2xl border border-border/80 bg-card p-6 shadow-lg shadow-black/25 sm:p-8">
         <div className="space-y-2">
           <p className="text-sm font-medium text-foreground">Data not available yet</p>
-          {!waitingOnScrape ? (
-            <p className="text-sm text-muted-foreground">{state.message}</p>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Results will appear here when the first market snapshot is ready.
-            </p>
-          )}
+          <p className="text-sm text-muted-foreground">{state.message}</p>
           {t === "preview" ? (
             <p className="text-sm text-muted-foreground">
               Create a free account to unlock more searches and a fuller market snapshot.
@@ -293,24 +289,7 @@ export function SearchExperience({
                       </div>
                     </div>
                   ) : state.code === "NO_DATA" && state.isRefreshing ? (
-                    <div
-                      className="mt-4 flex items-start gap-3 rounded-xl border border-border/80 bg-surface-alt/35 px-4 py-3 text-sm"
-                      role="status"
-                      aria-live="polite"
-                    >
-                      <Loader2
-                        className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-primary"
-                        aria-hidden
-                      />
-                      <p className="leading-relaxed">
-                        <span className="font-medium text-foreground">
-                          Fetching updated market data for this card.
-                        </span>{" "}
-                        <span className="text-muted-foreground">
-                          (Listings are updated regularly and may not reflect real-time data).
-                        </span>
-                      </p>
-                    </div>
+                    <MarketDataUpdatingBanner className="mt-4" />
                   ) : (
                     <div
                       className="mt-4 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"

@@ -20,9 +20,12 @@ export type CardMarketView = {
   listingsCount: number;
   lastUpdated: Date;
   isStale: boolean;
-  /** Background scrape queued/in-flight — client may poll for fresher cache. */
+  /**
+   * True when this response queued a new sold scrape (client may poll). Not set for unrelated in-flight jobs
+   * while cached results are shown.
+   */
   isRefreshing: boolean;
-  /** Show “Fetching latest sold listings…” only when this request created a new scrape job. */
+  /** True when this request queued a new scrape (vs refresh already pending) — UI can vary the “updating” copy. */
   showFetchingBanner: boolean;
   /** When the last Apify run failed; estimate may still reflect an older successful scrape. */
   lastScrapeError?: string | null;
@@ -35,6 +38,7 @@ export type CardMarketView = {
     source: string;
     soldPrice: number;
     soldDate: Date;
+    /** Always empty; per-listing sold URLs are not stored. */
     listingUrl: string;
     conditionLabel: string | null;
     gradeLabel: string | null;

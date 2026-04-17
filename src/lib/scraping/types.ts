@@ -4,6 +4,7 @@ export type ScrapedSoldListing = {
   title: string;
   soldPrice: number;
   soldAt: Date;
+  /** Used only while normalizing Apify rows; not persisted. */
   itemUrl?: string | null;
   itemId?: string | null;
   imageUrl?: string | null;

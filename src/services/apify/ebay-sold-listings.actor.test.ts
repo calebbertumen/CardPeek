@@ -93,7 +93,7 @@ describe("mapApifyEbaySoldItemsToListings", () => {
     expect(out.length).toBe(1);
   });
 
-  it("dedupes by eBay item id and keeps the actor listing URL from the winning row", () => {
+  it("dedupes by eBay item id and does not expose listing URLs on output rows", () => {
     const out = mapApifyEbaySoldItemsToListings(
       [
         {
@@ -115,7 +115,8 @@ describe("mapApifyEbaySoldItemsToListings", () => {
       "raw_nm",
     );
     expect(out.length).toBe(1);
-    expect(out[0]!.itemUrl).toBe("https://www.ebay.com/itm/100000000099");
+    expect(out[0]!.itemId).toBe("100000000099");
+    expect(out[0]!.itemUrl).toBeNull();
   });
 
   it("keeps best-offer flagged rows when soldPrice is present", () => {
@@ -193,7 +194,8 @@ describe("mapApifyEbaySoldItemsToListings", () => {
       "raw_nm",
     );
     expect(out.length).toBe(1);
-    expect(out[0]!.itemUrl).toBe("https://www.ebay.com/itm/123456789012");
+    expect(out[0]!.itemId).toBe("123456789012");
+    expect(out[0]!.itemUrl).toBeNull();
   });
 
   it("parses string sold prices from the actor (caffein.dev)", () => {

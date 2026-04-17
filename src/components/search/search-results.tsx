@@ -1,10 +1,7 @@
 import Image from "next/image";
 import { Separator } from "@/components/ui/separator";
 import type { CardMarketView } from "@/lib/market/card-market-view";
-import {
-  buildEbaySoldListingsSearchUrl,
-  buildEbaySoldSearchKeyword,
-} from "@/lib/search/sold-search-query";
+import { buildEbaySoldListingsSearchUrl, resolveEbaySoldSearchKeywordForDisplay } from "@/lib/search/sold-search-query";
 import { ListingCards } from "./listing-cards";
 import { PricingSummary } from "./pricing-summary";
 import type { AccessTier } from "@/lib/billing/access";
@@ -16,14 +13,13 @@ type Props = {
 };
 
 export function SearchResults({ data, tier }: Props) {
-  const resolvedEbayKeyword =
-    data.ebaySearchKeyword?.trim() ||
-    buildEbaySoldSearchKeyword({
-      name: data.card.name,
-      setName: data.card.setName,
-      cardNumber: data.card.cardNumber,
-      conditionBucket: data.conditionBucket,
-    });
+  const resolvedEbayKeyword = resolveEbaySoldSearchKeywordForDisplay({
+    storedKeyword: data.ebaySearchKeyword,
+    name: data.card.name,
+    setName: data.card.setName,
+    cardNumber: data.card.cardNumber,
+    conditionBucket: data.conditionBucket,
+  });
   const ebaySoldSearchUrl = resolvedEbayKeyword
     ? buildEbaySoldListingsSearchUrl(resolvedEbayKeyword)
     : null;
@@ -40,11 +36,6 @@ export function SearchResults({ data, tier }: Props) {
         <p className="text-sm text-muted-foreground">
           Based on recent market sales. Updated automatically when needed. Data may not reflect real-time listings.
         </p>
-        {data.showFetchingBanner ? (
-          <p className="text-sm font-medium text-foreground" role="status" aria-live="polite">
-            Fetching latest sold listings…
-          </p>
-        ) : null}
         {tier === "starter" && data.freeUpdatedLookups ? (
           <p className="text-xs text-muted-foreground">
             <span className="font-medium text-foreground">
@@ -55,11 +46,6 @@ export function SearchResults({ data, tier }: Props) {
               {data.freeUpdatedLookups.remaining}
             </span>{" "}
             remaining
-          </p>
-        ) : tier === "collector" ? (
-          <p className="text-xs text-muted-foreground">
-            <span className="font-medium text-foreground">Unlimited</span> access to updated market data (fair use
-            applies)
           </p>
         ) : null}
       </div>
@@ -88,7 +74,7 @@ export function SearchResults({ data, tier }: Props) {
             ) : null}
             {data.showFetchingBanner ? (
               <p className="mt-2 text-xs text-muted-foreground">
-                We&apos;re updating comps in the background; numbers below may refresh shortly.
+                Showing your last saved snapshot until the update finishes.
               </p>
             ) : data.isStale ? (
               <p className="mt-2 text-xs text-muted-foreground">
@@ -117,11 +103,6 @@ export function SearchResults({ data, tier }: Props) {
           <h2 className="text-lg font-semibold tracking-tight">Recent sales</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Stored from the latest market update for this card (not real-time).
-          </p>
-          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-            <span className="font-medium text-foreground">About “View” links:</span> eBay may change or expire listing
-            URLs after a sale. You won’t always land on the exact sold listing page, even though the price and title
-            here match what we stored from the sale.
           </p>
         </div>
         <ListingCards

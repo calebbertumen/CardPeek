@@ -13,7 +13,7 @@ export class MockSoldCompsProvider implements SoldCompsProvider {
       source: "mock",
       soldPrice: l.soldPrice,
       soldDate: new Date(l.soldDate),
-      listingUrl: l.listingUrl,
+      listingUrl: "",
       conditionLabel: l.conditionLabel,
     }));
   }

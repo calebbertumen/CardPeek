@@ -28,10 +28,28 @@ export function buildEbaySoldSearchKeyword(input: {
 
   // eBay supports minus-keywords; narrows sold search away from slabs for raw buckets.
   if (input.conditionBucket.startsWith("raw_")) {
-    keyword = `${keyword} -PSA -BGS -CGC -SGC -graded`.replace(/\s+/g, " ").trim();
+    keyword = `${keyword} -PSA -BGS -CGC -SGC -TAG -graded`.replace(/\s+/g, " ").trim();
   }
 
   return keyword;
+}
+
+/**
+ * Keyword for eBay sold-search links and API display. Raw buckets always use {@link buildEbaySoldSearchKeyword} so
+ * minus-keyword exclusions (e.g. `-TAG`) stay current even when `CardCache.ebaySearchKeyword` was stored by an older scrape.
+ */
+export function resolveEbaySoldSearchKeywordForDisplay(input: {
+  storedKeyword: string | null | undefined;
+  name: string;
+  setName?: string | null;
+  cardNumber?: string | null;
+  conditionBucket: ConditionBucket;
+}): string {
+  if (input.conditionBucket.startsWith("raw_")) {
+    return buildEbaySoldSearchKeyword(input);
+  }
+  const s = input.storedKeyword?.trim();
+  return s || buildEbaySoldSearchKeyword(input);
 }
 
 /**

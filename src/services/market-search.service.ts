@@ -19,6 +19,7 @@ import {
   getCardSearchStats,
   recordCardSearchEvent,
 } from "@/services/card-search-activity.service";
+import { resolveEbaySoldSearchKeywordForDisplay } from "@/lib/search/sold-search-query";
 
 export type MarketSearchResult =
   | {
@@ -85,6 +86,8 @@ export type MarketSearchResult =
 const COLLECTOR_QUEUE_PRIORITY = 1000;
 const STARTER_QUEUE_PRIORITY = 200;
 const LAST_RETURNED_AT_THROTTLE_MS = 6 * 60 * 60 * 1000;
+/** Hide “market data is being updated” unless the snapshot is at least this old (avoids false positives on fresh cache). */
+const MIN_CACHE_AGE_MS_FOR_REFRESH_UI = 24 * 60 * 60 * 1000;
 
 export async function searchCardMarketData(input: {
   name: string;
@@ -427,11 +430,16 @@ export async function searchCardMarketData(input: {
   }
 
   const nowOk = Date.now();
-  const cacheIsFresh = nowOk - existing.lastScrapedAt.getTime() < ttlMs;
+  const cacheAgeMs = nowOk - existing.lastScrapedAt.getTime();
+  const cacheIsFresh = cacheAgeMs < ttlMs;
   const isStaleFinal = !cacheIsFresh;
-  const isRefreshingFinal = cacheIsFresh ? false : backgroundRefreshPending;
+  const suppressUpdatingUi =
+    Number.isFinite(cacheAgeMs) && cacheAgeMs >= 0 && cacheAgeMs < MIN_CACHE_AGE_MS_FOR_REFRESH_UI;
+  // Only flag "refreshing" when *this* request queued a new scrape. `backgroundRefreshPending` can stay true for
+  // jobs queued earlier, which would otherwise keep the UI spinner up while we already show cached results.
   const showFetchingBannerFinal =
-    cacheIsFresh ? false : collectorDidQueueNew || starterDidQueueNew;
+    suppressUpdatingUi ? false : cacheIsFresh ? false : collectorDidQueueNew || starterDidQueueNew;
+  const isRefreshingFinal = showFetchingBannerFinal;
 
   const starterCounts =
     tier === "starter" && userId
@@ -469,7 +477,6 @@ export async function searchCardMarketData(input: {
               source: true,
               soldPrice: true,
               soldDate: true,
-              listingUrl: true,
               conditionLabel: true,
               gradeLabel: true,
               rawOrGraded: true,
@@ -482,7 +489,7 @@ export async function searchCardMarketData(input: {
               source: l.source,
               soldPrice: Number(l.soldPrice),
               soldDate: l.soldDate,
-              listingUrl: l.listingUrl,
+              listingUrl: "",
               conditionLabel: l.conditionLabel,
               gradeLabel: l.gradeLabel,
               rawOrGraded: l.rawOrGraded,
@@ -521,7 +528,14 @@ export async function searchCardMarketData(input: {
       isRefreshing: isRefreshingFinal,
       showFetchingBanner: showFetchingBannerFinal,
       lastScrapeError: existing.lastScrapeError,
-      ebaySearchKeyword: existing.ebaySearchKeyword ?? null,
+      ebaySearchKeyword:
+        resolveEbaySoldSearchKeywordForDisplay({
+          storedKeyword: existing.ebaySearchKeyword,
+          name: card.name,
+          setName: card.setName,
+          cardNumber: card.cardNumber,
+          conditionBucket,
+        }) || null,
       freeUpdatedLookups,
       listings,
     },

@@ -202,7 +202,7 @@ export async function processPendingScrapeJobs(input?: { limit?: number }): Prom
               source: "ebay",
               soldPrice: new Prisma.Decimal(l.soldPrice.toFixed(2)),
               soldDate: l.soldAt,
-              listingUrl: l.itemUrl ?? "",
+              listingUrl: "",
               itemId: l.itemId ?? null,
               imageUrl: l.imageUrl ?? null,
               rawPayload: storeRawPayload() ? ((l.raw ?? null) as Prisma.InputJsonValue) : undefined,

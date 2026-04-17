@@ -7,6 +7,7 @@ export type SoldCompListingDTO = {
   source?: string;
   soldPrice: number;
   soldDate: Date;
+  /** Per-listing sold URLs are not stored; keep empty for provider compatibility. */
   listingUrl: string;
   imageUrl?: string | null;
   conditionLabel?: string | null;

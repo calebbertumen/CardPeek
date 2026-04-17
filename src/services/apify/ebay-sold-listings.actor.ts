@@ -418,11 +418,12 @@ export function mapApifyEbaySoldItemsToListings(
 
   const deduped = Array.from(byKey.values()).sort((a, b) => b.soldAt.getTime() - a.soldAt.getTime());
 
+  // Do not expose per-listing eBay URLs downstream (we do not persist or show them).
   return deduped.map((r) => ({
     title: r.title,
     soldPrice: r.soldPrice,
     soldAt: r.soldAt,
-    itemUrl: r.itemUrl ?? null,
+    itemUrl: null,
     itemId: r.itemId ?? null,
     imageUrl: r.imageUrl ?? null,
     conditionLabel: r.conditionLabel ?? null,

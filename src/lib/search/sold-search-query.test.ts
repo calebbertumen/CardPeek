@@ -3,6 +3,7 @@ import {
   buildEbaySoldListingsSearchUrl,
   buildEbaySoldSearchKeyword,
   normalizeSoldSearchKeywordForDedupe,
+  resolveEbaySoldSearchKeywordForDisplay,
 } from "@/lib/search/sold-search-query";
 
 describe("buildEbaySoldSearchKeyword", () => {
@@ -28,6 +29,34 @@ describe("buildEbaySoldSearchKeyword", () => {
     });
     expect(q.startsWith("Pikachu")).toBe(true);
     expect(q).toContain("-PSA");
+    expect(q).toContain("-TAG");
+  });
+});
+
+describe("resolveEbaySoldSearchKeywordForDisplay", () => {
+  it("ignores stored raw keyword so exclusions stay current", () => {
+    const q = resolveEbaySoldSearchKeywordForDisplay({
+      storedKeyword: "Charmander Detective Pikachu #4 -PSA -BGS -CGC -SGC -graded",
+      name: "Charmander",
+      setName: "Detective Pikachu",
+      cardNumber: "4",
+      conditionBucket: "raw_nm",
+    });
+    expect(q).toContain("-TAG");
+    expect(q).toContain("Charmander");
+  });
+
+  it("uses stored keyword for PSA when present", () => {
+    const stored = "Charizard PSA 10";
+    expect(
+      resolveEbaySoldSearchKeywordForDisplay({
+        storedKeyword: stored,
+        name: "Charizard",
+        setName: null,
+        cardNumber: null,
+        conditionBucket: "psa_10",
+      }),
+    ).toBe(stored);
   });
 });
 

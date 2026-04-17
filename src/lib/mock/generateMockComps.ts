@@ -122,8 +122,6 @@ function computeStats(prices: number[]): Pick<MockComps, "avgPrice" | "medianPri
   };
 }
 
-const PLACEHOLDER_EBAY = "https://www.ebay.com";
-
 /**
  * Deterministic mock sold comps shaped like a future real provider payload.
  * Same card + condition yields a stable baseline; per-listing noise is seeded (±10–15%).
@@ -152,7 +150,7 @@ export function generateMockComps(cardName: string, condition: string): MockComp
       title: generateTitle(cardName, bucket, i),
       soldPrice,
       soldDate: generateDate(dayOffsets[i]!),
-      listingUrl: PLACEHOLDER_EBAY,
+      listingUrl: "",
       conditionLabel: conditionDisplayLabel(bucket),
     });
   }

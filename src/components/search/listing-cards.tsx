@@ -29,7 +29,7 @@ export function ListingCards({ listings, tier, listingsCount, ebaySoldSearchUrl 
     <ul className="space-y-4">
       {visible.map((listing) => {
         return (
-          <li key={`${listing.position}-${listing.listingUrl}`}>
+          <li key={listing.position}>
             <Card className="overflow-hidden border-border/80 shadow-sm transition-[border-color,box-shadow] hover:border-primary/35 hover:shadow-lg hover:shadow-black/25">
               <CardHeader className="space-y-2 pb-3">
                 <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -39,14 +39,6 @@ export function ListingCards({ listings, tier, listingsCount, ebaySoldSearchUrl 
                     </div>
                     <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
                       <p className="text-xl font-semibold tracking-tight text-primary">{formatUsd(listing.soldPrice)}</p>
-                      {listing.listingUrl.trim() ? (
-                        <Button variant="outline" size="sm" className="rounded-full" asChild>
-                          <a href={listing.listingUrl} target="_blank" rel="noopener noreferrer">
-                            View
-                            <ExternalLink className="ml-1.5 h-3.5 w-3.5" aria-hidden />
-                          </a>
-                        </Button>
-                      ) : null}
                     </div>
                 </div>
               </CardHeader>
