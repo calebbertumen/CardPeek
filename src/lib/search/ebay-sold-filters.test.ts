@@ -20,6 +20,21 @@ describe("soldListingTitleMatchesBucket", () => {
     expect(soldListingTitleMatchesBucket("Near Mint NM", "raw_nm")).toBe(true);
   });
 
+  it("raw_nm rejects LP/MP/HP/DMG listings", () => {
+    expect(soldListingTitleMatchesBucket("Pokemon Dark Blastoise 3/82 Team Rocket Holo LP", "raw_nm")).toBe(false);
+    expect(soldListingTitleMatchesBucket("Pokemon Dark Blastoise 3/82 Team Rocket Holo MP", "raw_nm")).toBe(false);
+    expect(soldListingTitleMatchesBucket("Pokemon Dark Blastoise 3/82 Team Rocket Holo HP", "raw_nm")).toBe(false);
+    expect(soldListingTitleMatchesBucket("Pokemon Dark Blastoise 3/82 Team Rocket Holo DMG", "raw_nm")).toBe(false);
+    expect(soldListingTitleMatchesBucket("Pokemon Dark Blastoise 3/82 Team Rocket Holo damaged", "raw_nm")).toBe(false);
+  });
+
+  it("raw_nm rejects condition label that signals a worse condition", () => {
+    expect(soldListingTitleMatchesBucket("Dark Blastoise 3/82 Team Rocket Holo", "raw_nm", "Lightly Played")).toBe(
+      false,
+    );
+    expect(soldListingTitleMatchesBucket("Dark Blastoise 3/82 Team Rocket Holo", "raw_nm", "MP")).toBe(false);
+  });
+
   it("psa_9 requires PSA 9 in title", () => {
     expect(soldListingTitleMatchesBucket("PSA 9 Mint", "psa_9")).toBe(true);
     expect(soldListingTitleMatchesBucket("PSA 10 Gem", "psa_9")).toBe(false);

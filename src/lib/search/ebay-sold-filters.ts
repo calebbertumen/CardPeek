@@ -13,6 +13,63 @@ export function isLikelyGradedListingTitle(title: string): boolean {
   );
 }
 
+function rawConditionSignals(combined: string): {
+  nm: boolean;
+  lp: boolean;
+  mp: boolean;
+  hp: boolean;
+  dmg: boolean;
+} {
+  const t = combined;
+  // Keep these patterns intentionally conservative: we only want to act on *explicit* signals.
+  const nm =
+    /\bnear\s*mint\b/i.test(t) ||
+    /\bnm\b/i.test(t) ||
+    /\bmint\b/i.test(t) ||
+    /\bminty\b/i.test(t);
+  const lp =
+    /\blightly\s*played\b/i.test(t) ||
+    /\blp\b/i.test(t) ||
+    /\blight\s*play(?:ed)?\b/i.test(t);
+  const mp =
+    /\bmoderately\s*played\b/i.test(t) ||
+    /\bmp\b/i.test(t) ||
+    /\bmod(?:erate(?:ly)?)?\s*play(?:ed)?\b/i.test(t);
+  const hp =
+    /\bheavily\s*played\b/i.test(t) ||
+    /\bhp\b/i.test(t) ||
+    /\bheavy\s*play(?:ed)?\b/i.test(t);
+  const dmg =
+    /\bdamaged\b/i.test(t) ||
+    /\bdmg\b/i.test(t) ||
+    /\bpoor\b/i.test(t) ||
+    /\bcreases?\b/i.test(t) ||
+    /\bwater\s*damage\b/i.test(t) ||
+    /\btear(?:s|ed)?\b/i.test(t);
+  return { nm, lp, mp, hp, dmg };
+}
+
+function rawListingMatchesBucket(combined: string, bucket: ConditionBucket): boolean {
+  const s = rawConditionSignals(combined);
+  if (bucket === "raw_nm") {
+    // Reject explicit worse conditions (LP/MP/HP/DMG). If no explicit condition is present, keep it.
+    return !(s.lp || s.mp || s.hp || s.dmg);
+  }
+  if (bucket === "raw_lp") {
+    // Must not be clearly worse than LP; also reject explicit NM so NM searches don't bleed both ways.
+    if (s.mp || s.hp || s.dmg) return false;
+    if (s.nm) return false;
+    // If explicit LP is present, accept; if no explicit markers, accept (many listings omit condition).
+    return true;
+  }
+  if (bucket === "raw_mp_hp") {
+    // Reject explicit NM/LP; keep MP/HP/DMG and "no explicit condition" results.
+    if (s.nm || s.lp) return false;
+    return true;
+  }
+  return true;
+}
+
 /** Every explicit `PSA <n>` mention in title + condition text. */
 function psaGradesInCombinedText(combined: string): number[] {
   const out: number[] = [];
@@ -71,7 +128,8 @@ export function soldListingTitleMatchesBucket(
 ): boolean {
   const combined = `${title ?? ""} ${conditionLabel ?? ""}`.trim();
   if (bucket.startsWith("raw_")) {
-    return !isLikelyGradedListingTitle(combined);
+    if (isLikelyGradedListingTitle(combined)) return false;
+    return rawListingMatchesBucket(combined, bucket);
   }
   if (bucket === "psa_10") {
     if (mentionsCompetitorGradingSlab(combined)) return false;
