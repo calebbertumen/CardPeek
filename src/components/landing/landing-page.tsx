@@ -1,8 +1,6 @@
 import type { ReactNode } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { BarChart3, Layers, Search } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { LandingSearchSectionServer } from "@/components/search/landing-search-section-server";
 import { searchBarWidthClassName } from "@/components/search/search-bar-layout";
@@ -57,27 +55,6 @@ export function LandingPage() {
               title="Clean card-level search"
               body="Name, set, number, and condition bucket—structured for serious buying decisions."
             />
-          </div>
-        </div>
-      </section>
-
-      <section id="how" className="scroll-mt-20 bg-surface-alt/25 py-16 sm:py-24">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">How it works</h2>
-            <p className="mt-3 text-muted-foreground">
-              Three quick steps from search to confident pricing context.
-            </p>
-          </div>
-          <ol className="mx-auto mt-12 grid max-w-4xl list-none gap-8 sm:grid-cols-3">
-            <Step n={1} title="Search the card" body="Enter name, optional set and number, and pick a condition bucket." />
-            <Step n={2} title="View recent solds" body="We show up to five recent sold listings matched to that bucket." />
-            <Step n={3} title="Get pricing context" body="See average, median, range, and when the data was last refreshed." />
-          </ol>
-          <div className="mt-12 flex justify-center">
-            <Button asChild size="lg" className="h-12 rounded-full px-10 shadow-sm">
-              <Link href="#search">Try a search</Link>
-            </Button>
           </div>
         </div>
       </section>
@@ -148,17 +125,5 @@ function BenefitCard({
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{body}</p>
       </CardContent>
     </Card>
-  );
-}
-
-function Step({ n, title, body }: { n: number; title: string; body: string }) {
-  return (
-    <li className="text-center sm:text-left">
-      <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground sm:mx-0">
-        {n}
-      </div>
-      <h3 className="mt-4 font-semibold tracking-tight">{title}</h3>
-      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{body}</p>
-    </li>
   );
 }
