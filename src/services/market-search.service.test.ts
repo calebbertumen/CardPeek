@@ -4,6 +4,7 @@ const upsertCardFromApiMock = vi.fn();
 const cardFindUniqueMock = vi.fn();
 const cardCacheFindUniqueMock = vi.fn();
 const cardCacheUpdateMock = vi.fn();
+const cardCacheListingFindManyMock = vi.fn();
 
 const fetchPokemonCardBestMatchMock = vi.fn();
 
@@ -32,6 +33,9 @@ vi.mock("@/lib/db", () => ({
     cardCache: {
       findUnique: (...args: unknown[]) => cardCacheFindUniqueMock(...args),
       update: (...args: unknown[]) => cardCacheUpdateMock(...args),
+    },
+    cardCacheListing: {
+      findMany: (...args: unknown[]) => cardCacheListingFindManyMock(...args),
     },
   },
 }));
@@ -83,6 +87,7 @@ describe("searchCardMarketData (lifetime updated lookups)", () => {
     cardFindUniqueMock.mockReset();
     cardCacheFindUniqueMock.mockReset();
     cardCacheUpdateMock.mockReset();
+    cardCacheListingFindManyMock.mockReset();
     getEntitlementMock.mockReset();
     queueStarterMock.mockReset();
     fetchPokemonCardBestMatchMock.mockReset();
@@ -108,22 +113,11 @@ describe("searchCardMarketData (lifetime updated lookups)", () => {
       highPrice: 10,
       listingsCount: 1,
       lastScrapedAt: new Date(Date.now() - 60_000),
+      lastReturnedAt: null,
       lastScrapeError: null,
       ebaySearchKeyword: "pikachu",
-      listings: [
-        {
-          title: "x",
-          source: "ebay",
-          soldPrice: 10,
-          soldDate: new Date(),
-          listingUrl: "",
-          conditionLabel: null,
-          gradeLabel: null,
-          rawOrGraded: null,
-          position: 1,
-        },
-      ],
     });
+    cardCacheListingFindManyMock.mockResolvedValueOnce([{ soldPrice: 10, position: 1 }]);
 
     getEntitlementMock.mockResolvedValueOnce({
       allowed: true,
@@ -185,22 +179,11 @@ describe("searchCardMarketData (lifetime updated lookups)", () => {
       highPrice: 10,
       listingsCount: 1,
       lastScrapedAt: new Date(Date.now() - 60_000),
+      lastReturnedAt: null,
       lastScrapeError: null,
       ebaySearchKeyword: "pikachu",
-      listings: [
-        {
-          title: "x",
-          source: "ebay",
-          soldPrice: 10,
-          soldDate: new Date(),
-          listingUrl: "https://www.ebay.com/itm/123",
-          conditionLabel: null,
-          gradeLabel: null,
-          rawOrGraded: null,
-          position: 1,
-        },
-      ],
     });
+    cardCacheListingFindManyMock.mockResolvedValueOnce([{ soldPrice: 10, position: 1 }]);
 
     const { searchCardMarketData } = await import("./market-search.service");
     const res = await searchCardMarketData({

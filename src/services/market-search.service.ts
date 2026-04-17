@@ -84,6 +84,7 @@ export type MarketSearchResult =
 
 const COLLECTOR_QUEUE_PRIORITY = 1000;
 const STARTER_QUEUE_PRIORITY = 200;
+const LAST_RETURNED_AT_THROTTLE_MS = 6 * 60 * 60 * 1000;
 
 export async function searchCardMarketData(input: {
   name: string;
@@ -174,15 +175,28 @@ export async function searchCardMarketData(input: {
   const ttlMs = cachePolicyTtlMs(policy);
 
   const cacheKey = buildCacheKey(card.normalizedCardKey, conditionBucket);
-  let existing = (
-    await Promise.all([
-      prisma.cardCache.findUnique({
-        where: { cacheKey },
-        include: { listings: true },
-      }),
-      recordCardSearchEvent(card.normalizedCardKey, userId),
-    ])
-  )[0];
+  const existingBase = await prisma.cardCache.findUnique({
+    where: { cacheKey },
+    select: {
+      id: true,
+      avgPrice: true,
+      medianPrice: true,
+      lowPrice: true,
+      highPrice: true,
+      listingsCount: true,
+      lastScrapedAt: true,
+      lastReturnedAt: true,
+      lastScrapeError: true,
+      ebaySearchKeyword: true,
+    },
+  });
+
+  // Non-blocking analytics: don't keep cache-hit latency hostage to a write.
+  void Promise.resolve(recordCardSearchEvent(card.normalizedCardKey, userId)).catch(() => {
+    // best-effort
+  });
+
+  let existing = existingBase;
 
   const now = Date.now();
   const cacheFreshForCleanup = existing ? now - existing.lastScrapedAt.getTime() < ttlMs : false;
@@ -250,7 +264,18 @@ export async function searchCardMarketData(input: {
     await processPendingScrapeJobs({ limit: 1 });
     existing = await prisma.cardCache.findUnique({
       where: { cacheKey },
-      include: { listings: true },
+      select: {
+        id: true,
+        avgPrice: true,
+        medianPrice: true,
+        lowPrice: true,
+        highPrice: true,
+        listingsCount: true,
+        lastScrapedAt: true,
+        lastReturnedAt: true,
+        lastScrapeError: true,
+        ebaySearchKeyword: true,
+      },
     });
     if (existing) {
       const nowAfter = Date.now();
@@ -310,7 +335,18 @@ export async function searchCardMarketData(input: {
         await waitForFreshSoldCache({ cacheKey, ttlMs });
         existing = await prisma.cardCache.findUnique({
           where: { cacheKey },
-          include: { listings: true },
+          select: {
+            id: true,
+            avgPrice: true,
+            medianPrice: true,
+            lowPrice: true,
+            highPrice: true,
+            listingsCount: true,
+            lastScrapedAt: true,
+            lastReturnedAt: true,
+            lastScrapeError: true,
+            ebaySearchKeyword: true,
+          },
         });
       }
 
@@ -377,10 +413,18 @@ export async function searchCardMarketData(input: {
     }
   }
 
-  await prisma.cardCache.update({
-    where: { id: existing.id },
-    data: { lastReturnedAt: new Date() },
-  });
+  // Throttle lastReturnedAt writes (best-effort, non-blocking).
+  const lastReturnedAtMs = existing.lastReturnedAt?.getTime() ?? 0;
+  if (lastReturnedAtMs === 0 || now - lastReturnedAtMs > LAST_RETURNED_AT_THROTTLE_MS) {
+    void Promise.resolve(
+      prisma.cardCache.update({
+        where: { id: existing.id },
+        data: { lastReturnedAt: new Date() },
+      }),
+    ).catch(() => {
+      // best-effort
+    });
+  }
 
   const nowOk = Date.now();
   const cacheIsFresh = nowOk - existing.lastScrapedAt.getTime() < ttlMs;
@@ -407,26 +451,47 @@ export async function searchCardMarketData(input: {
     });
   }
 
-  const visible = existing.listings
-    .sort((a, b) => a.position - b.position)
-    .slice(0, input.entitlements.recentSalesVisibleCount);
+  const listingPrices = await prisma.cardCacheListing.findMany({
+    where: { cardCacheId: existing.id },
+    select: { soldPrice: true, position: true },
+    orderBy: { position: "asc" },
+  });
 
   const listings =
     input.entitlements.recentSalesVisibleCount > 0
-      ? visible.map((l) => ({
-          title: l.title,
-          source: l.source,
-          soldPrice: Number(l.soldPrice),
-          soldDate: l.soldDate,
-          listingUrl: l.listingUrl,
-          conditionLabel: l.conditionLabel,
-          gradeLabel: l.gradeLabel,
-          rawOrGraded: l.rawOrGraded,
-          position: l.position,
-        }))
+      ? await prisma.cardCacheListing
+          .findMany({
+            where: { cardCacheId: existing.id },
+            orderBy: { position: "asc" },
+            take: input.entitlements.recentSalesVisibleCount,
+            select: {
+              title: true,
+              source: true,
+              soldPrice: true,
+              soldDate: true,
+              listingUrl: true,
+              conditionLabel: true,
+              gradeLabel: true,
+              rawOrGraded: true,
+              position: true,
+            },
+          })
+          .then((rows) =>
+            rows.map((l) => ({
+              title: l.title,
+              source: l.source,
+              soldPrice: Number(l.soldPrice),
+              soldDate: l.soldDate,
+              listingUrl: l.listingUrl,
+              conditionLabel: l.conditionLabel,
+              gradeLabel: l.gradeLabel,
+              rawOrGraded: l.rawOrGraded,
+              position: l.position,
+            })),
+          )
       : [];
 
-  const pricing = computeDisplayedAveragePrice(existing.listings.map((l) => Number(l.soldPrice)));
+  const pricing = computeDisplayedAveragePrice(listingPrices.map((l) => Number(l.soldPrice)));
   const avgExcludedPrices =
     pricing.pricingMethod === "trimmed_mean_5" && pricing.excludedPrices.length > 0
       ? pricing.excludedPrices

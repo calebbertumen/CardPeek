@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import Image from "next/image";
-import { BarChart3, Layers, Search } from "lucide-react";
+import { BarChart3, Layers, Search, Star } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { LandingSearchSectionServer } from "@/components/search/landing-search-section-server";
 import { searchBarWidthClassName } from "@/components/search/search-bar-layout";
@@ -39,7 +39,7 @@ export function LandingPage() {
 
       <section className="border-b border-border/60 bg-background py-16 sm:py-20">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <div className="grid gap-6 sm:grid-cols-3">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             <BenefitCard
               icon={<BarChart3 className="h-5 w-5" aria-hidden />}
               title="Recent sold comps"
@@ -54,6 +54,11 @@ export function LandingPage() {
               icon={<Search className="h-5 w-5" aria-hidden />}
               title="Clean card-level search"
               body="Name, set, number, and condition bucket—structured for serious buying decisions."
+            />
+            <BenefitCard
+              icon={<Star className="h-5 w-5" aria-hidden />}
+              title="Track your collection"
+              body="Add cards with a condition to your collection and revisit pricing context anytime."
             />
           </div>
         </div>
