@@ -5,7 +5,7 @@ import { processPendingScrapeJobs } from "@/services/scrape-worker.service";
  * MVP worker endpoint.
  *
  * Call from cron (e.g. every minute) with `Authorization: Bearer <CRON_SECRET>` when `CRON_SECRET` is set.
- * **Browser clients** cannot send that secret — use {@link kickScrapeWorkerAction} instead (session-based).
+ * **Browser clients** cannot send that secret  -  use {@link kickScrapeWorkerAction} instead (session-based).
  */
 export async function POST(request: Request) {
   const secret = process.env.CRON_SECRET;

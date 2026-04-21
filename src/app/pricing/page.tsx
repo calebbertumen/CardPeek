@@ -31,7 +31,7 @@ function CollectorPlanActions({
   if (!userId) {
     return (
       <Button asChild className="w-full rounded-full">
-        <Link href="/register?callbackUrl=/pricing">Unlock real prices</Link>
+        <Link href="/register?callbackUrl=/pricing">Create account for Collector</Link>
       </Button>
     );
   }
@@ -44,7 +44,7 @@ function CollectorPlanActions({
     );
   }
 
-  return <StripeCheckoutButton>Unlock real prices</StripeCheckoutButton>;
+  return <StripeCheckoutButton>Unlock sales</StripeCheckoutButton>;
 }
 
 type PricingPageProps = {
@@ -77,13 +77,14 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
         <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
           Know what your cards are actually worth.
         </h1>
-        <p className="mx-auto mt-3 max-w-lg text-muted-foreground">
-          Powered by real eBay sold listings. Updated automatically when needed.
+        <p className="mx-auto mt-3 max-w-lg space-y-1 text-muted-foreground">
+          <span className="block">Built from recent eBay sold listings, not active listings.</span>
+          <span className="block">We store a cleaned snapshot so you get a calmer read than scrolling raw sold results.</span>
         </p>
       </div>
 
-      <p className="mx-auto mt-10 max-w-xl text-center text-sm font-medium text-foreground">
-        Free gives you an estimate. Collector shows you the real market.
+      <p className="mx-auto mt-10 max-w-none text-center text-sm font-medium text-foreground sm:whitespace-nowrap">
+        Starter shows a saved snapshot of recent sales. Collector lets you see the sales behind it.
       </p>
 
       <div className="mt-8 grid gap-6 md:grid-cols-2">
@@ -97,7 +98,7 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="space-y-1.5">
                 <CardTitle className="text-xl">Starter (Free)</CardTitle>
-                <CardDescription>Get a quick, reliable estimate of your card&apos;s value.</CardDescription>
+                <CardDescription>Quick pricing from a saved snapshot of recent sales.</CardDescription>
               </div>
               {starterIsCurrent ? (
                 <Badge variant="default" className="shrink-0">
@@ -109,13 +110,12 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
           <CardContent className="space-y-6">
             <p className="text-4xl font-semibold tracking-tight text-primary">$0</p>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>• Unlimited searches (cached data)</li>
-              <li>• 3 lifetime fresh data updates</li>
-              <li>• Average price based on recent sales</li>
-              <li>• Price range insights</li>
-              <li>• Preview recent sales (blurred)</li>
-              <li className="font-semibold text-foreground">• Track up to 10 cards in your collection</li>
-              <li>• View your collection&apos;s total value (based on cached data)</li>
+              <li>• Unlimited searches on saved sold snapshots</li>
+              <li>• Includes up to 3 fresh data updates when available</li>
+              <li>• Estimate based on recent sold listings</li>
+              <li>• Typical range from cleaned recent sales</li>
+              <li>• Sold listings hidden (preview only)</li>
+              <li>• Track up to 10 cards using Near Mint pricing</li>
             </ul>
             <Button asChild className="w-full rounded-full" variant={starterIsCurrent ? "secondary" : "default"}>
               <Link href="/search">Check a card for free</Link>
@@ -133,7 +133,7 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="space-y-1.5">
                 <CardTitle className="text-xl">Collector</CardTitle>
-                <CardDescription>See exactly what your cards are selling for.</CardDescription>
+                <CardDescription>See the sales behind the estimate, with condition filters and full sold listings.</CardDescription>
               </div>
               {collectorIsCurrent ? (
                 <Badge variant="default" className="shrink-0">
@@ -147,19 +147,15 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
               <p className="text-4xl font-semibold tracking-tight text-primary">
                 ${collector.priceMonthlyUsd.toFixed(2)}/mo
               </p>
-              <p className="mt-1 text-sm italic text-muted-foreground">Less than the price of one bad buy.</p>
+              <p className="mt-1 text-sm text-muted-foreground">See the exact sales behind the estimate.</p>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Cancel anytime. No commitment.</p>
             </div>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>• Full access to real sold listings</li>
-              <li>• See up to 5 most recent verified sales</li>
-              <li>• Accurate pricing from actual transactions</li>
-              <li>• Full price range insights</li>
-              <li>• Unlimited access to updated market data (fair use applies)</li>
-              <li className="font-semibold text-foreground">
-                • Unlimited collection tracking with updated pricing when available
-              </li>
-              <li className="font-semibold text-foreground">• Know exactly what your collection is worth right now</li>
-              <li>• No more guessing or overpriced comps</li>
+              <li>• See up to 5 recent sales per card (price, date, title)</li>
+              <li>• Compare prices across different conditions</li>
+              <li>• Filter by condition during search</li>
+              <li>• Access fresher sales data when available</li>
+              <li>• Track unlimited cards with chosen condition</li>
             </ul>
             <div id="checkout" />
             {!collectorIsCurrent ? (
@@ -172,7 +168,7 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
                 <Link href="/legal/refund-policy" className="font-medium text-foreground underline underline-offset-2">
                   refund policy
                 </Link>
-                . Full refund available within 5 days of your first purchase only.
+                . Refunds are available within 5 days of your first purchase. See refund policy for details.
               </p>
             ) : null}
             <CollectorPlanActions userId={dbUser?.id} currentPlanId={currentPlanId} />
@@ -186,12 +182,11 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
       </div>
 
       <blockquote className="mx-auto mt-10 max-w-2xl border-l-2 border-border pl-4 text-sm leading-relaxed text-muted-foreground">
-        Data is refreshed automatically when needed. Most cards update within 24–72 hours.
+        Data updates automatically. Most cards refresh within 24 to 72 hours.
       </blockquote>
 
       <div className="mx-auto mt-12 max-w-xl text-center">
-        <p className="text-xs leading-relaxed text-muted-foreground">Cancel anytime. No commitment.</p>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           <Link href="/legal/terms" className="underline underline-offset-4 hover:text-foreground">
             Terms
           </Link>

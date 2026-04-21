@@ -126,7 +126,7 @@ export async function requestPasswordResetAction(
 
   if (emailOutcome.outcome === "dev_terminal_log") {
     return {
-      success: `${PASSWORD_RESET_GENERIC_SUCCESS_MESSAGE} (Dev: RESEND_API_KEY is not set — copy the reset link from the terminal where Next.js is running.)`,
+      success: `${PASSWORD_RESET_GENERIC_SUCCESS_MESSAGE} (Dev: RESEND_API_KEY is not set. Copy the reset link from the terminal where Next.js is running.)`,
     };
   }
 

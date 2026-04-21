@@ -131,7 +131,7 @@ export function CardSearchFields({
                 id={pid("condition-select")}
                 tabIndex={0}
                 className="flex h-11 w-full min-w-0 max-w-full cursor-default items-center rounded-lg border border-border bg-surface-alt px-2.5 text-sm text-foreground select-none outline-none transition-colors hover:border-border focus-visible:border-border focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                aria-label="Condition — Collector unlocks other condition filters"
+                aria-label="Condition. Collector unlocks other condition filters."
               >
                 <span className="truncate">
                   {CONDITION_OPTIONS.find((o) => o.value === condition)?.label ?? condition}

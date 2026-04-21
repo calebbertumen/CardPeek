@@ -100,7 +100,7 @@ export default function RefundPolicyPage() {
           <p>Approved refunds will be issued to the original payment method used at checkout.</p>
           <ul className="list-inside list-disc space-y-2 pl-1">
             <li>Processing times may vary depending on your payment provider</li>
-            <li>Most refunds are completed within 5–10 business days</li>
+            <li>Most refunds are completed within 5 to 10 business days</li>
           </ul>
         </section>
 

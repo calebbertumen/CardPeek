@@ -6,7 +6,7 @@ export type CardVariantParts = {
   name: string;
   setName?: string | null;
   cardNumber?: string | null;
-  /** Sub-variant (e.g. holo) — optional */
+  /** Sub-variant (e.g. holo)  -  optional */
   variantLabel?: string | null;
   gradingCompany?: string | null;
   gradeLabel?: string | null;

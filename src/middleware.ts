@@ -18,7 +18,7 @@ export function middleware(request: NextRequest) {
 }
 
 /**
- * Only run on real app routes — never on `/_next/*`, `/api/*`, static files, or favicon.
+ * Only run on real app routes  -  never on `/_next/*`, `/api/*`, static files, or favicon.
  * Running middleware on dev internals (e.g. webpack-hmr) breaks HMR and causes 404s on CSS/JS chunks.
  *
  * @see https://nextjs.org/docs/app/building-your-application/routing/middleware#matcher

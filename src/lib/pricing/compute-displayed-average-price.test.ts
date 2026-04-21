@@ -10,18 +10,33 @@ describe("computeDisplayedAveragePrice", () => {
     expect(res.displayedAveragePrice).toBe(110);
   });
 
-  it("4 listings: mean of all 4", () => {
+  it("4 listings: trimmed mean of inner 2", () => {
     const res = computeDisplayedAveragePrice([100, 105, 110, 300]);
-    expect(res.pricingMethod).toBe("mean_4");
-    expect(res.displayedAveragePrice).toBe(153.75);
-    expect(res.includedPrices).toEqual([100, 105, 110, 300]);
-    expect(res.excludedPrices).toEqual([]);
+    expect(res.pricingMethod).toBe("trimmed_mean_4");
+    expect(res.includedPrices).toEqual([105, 110]);
+    expect(res.excludedPrices).toEqual([100, 300]);
+    expect(res.displayedAveragePrice).toBe(107.5);
   });
 
-  it("3 listings: mean of all 3", () => {
+  it("3 listings: mean of all 3 when evenly spaced", () => {
     const res = computeDisplayedAveragePrice([100, 110, 120]);
     expect(res.pricingMethod).toBe("mean_3");
     expect(res.displayedAveragePrice).toBe(110);
+  });
+
+  it("3 listings: trims a high outlier", () => {
+    const res = computeDisplayedAveragePrice([100, 105, 500]);
+    expect(res.pricingMethod).toBe("outlier_trim_high_3");
+    expect(res.includedPrices).toEqual([100, 105]);
+    expect(res.excludedPrices).toEqual([500]);
+    expect(res.displayedAveragePrice).toBe(102.5);
+  });
+
+  it("3 listings: trims a low outlier", () => {
+    const res = computeDisplayedAveragePrice([5, 100, 105]);
+    expect(res.pricingMethod).toBe("outlier_trim_low_3");
+    expect(res.excludedPrices).toEqual([5]);
+    expect(res.displayedAveragePrice).toBe(102.5);
   });
 
   it("2 listings: mean of both", () => {

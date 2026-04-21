@@ -10,6 +10,7 @@ import { requireDbUser } from "@/lib/require-db-user";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { prisma } from "@/lib/db";
 import { getPricingForCollectionItem, getUserCollection } from "@/services/collection.service";
 import { Info } from "lucide-react";
 import { CollectionItemMenu } from "@/components/collection/collection-item-menu";
@@ -57,6 +58,13 @@ export default async function CollectionPage() {
   if (!dbUser) {
     redirect("/login?callbackUrl=/collection");
   }
+
+  const userSnapshot = await prisma.user.findUnique({
+    where: { id: dbUser.id },
+    select: { collectionValueSnapshotUsd: true, collectionValueSnapshotAt: true },
+  });
+  const previousTotalValue =
+    userSnapshot?.collectionValueSnapshotUsd != null ? Number(userSnapshot.collectionValueSnapshotUsd) : null;
 
   const tier = await getUserPlanId(dbUser.id);
   const rawItems: CollectionItemRow[] = await getUserCollection(dbUser.id);
@@ -128,6 +136,24 @@ export default async function CollectionPage() {
     return any ? sum : null;
   })();
 
+  const valueChange =
+    previousTotalValue != null && totalValue != null && Number.isFinite(previousTotalValue) && Number.isFinite(totalValue)
+      ? {
+          amount: totalValue - previousTotalValue,
+          pct: previousTotalValue !== 0 ? ((totalValue - previousTotalValue) / previousTotalValue) * 100 : null,
+        }
+      : null;
+
+  if (totalValue != null && Number.isFinite(totalValue)) {
+    await prisma.user.update({
+      where: { id: dbUser.id },
+      data: {
+        collectionValueSnapshotUsd: totalValue,
+        collectionValueSnapshotAt: new Date(),
+      },
+    });
+  }
+
   const limitReached = tier === "starter" && rawItems.length >= 10;
 
   return (
@@ -198,9 +224,33 @@ export default async function CollectionPage() {
           </CardHeader>
           <CardContent>
             {totalValue == null ? (
-              <p className="text-sm text-muted-foreground">—</p>
+              <p className="text-sm text-muted-foreground">No data</p>
             ) : (
-              <p className="text-3xl font-semibold tracking-tight text-[#10b981]">{formatUsd(totalValue)}</p>
+              <>
+                <p className="text-3xl font-semibold tracking-tight text-[#10b981]">{formatUsd(totalValue)}</p>
+                {valueChange ? (
+                  <p className="mt-2 text-sm">
+                    <span className={valueChange.amount >= 0 ? "text-emerald-600" : "text-amber-700"}>
+                      {valueChange.amount >= 0 ? "+" : "-"}
+                      {formatUsd(Math.abs(valueChange.amount))}
+                    </span>
+                    {valueChange.pct != null && Number.isFinite(valueChange.pct) ? (
+                      <span className="text-muted-foreground">
+                        {" "}
+                        ({valueChange.amount >= 0 ? "+" : ""}
+                        {valueChange.pct.toFixed(1)}%)
+                      </span>
+                    ) : null}
+                    <span className="block pt-1 text-xs text-muted-foreground">
+                      Compared to the last time you opened this page (same cached pricing pipeline as search).
+                    </span>
+                  </p>
+                ) : (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Next time you visit, we&apos;ll show how this total moved since then.
+                  </p>
+                )}
+              </>
             )}
             {totalValue == null && rawItems.length > 0 && tier === "starter" ? (
               <p className="mt-3 text-sm text-muted-foreground">
@@ -260,7 +310,7 @@ export default async function CollectionPage() {
                                   ) : null}
                                 </div>
                                 <p className="mt-0.5 text-sm text-muted-foreground">
-                                  {item.setName ? item.setName : "—"}
+                                  {item.setName ? item.setName : "No set"}
                                   {item.cardNumber ? ` · #${item.cardNumber}` : ""}
                                 </p>
                               </div>
@@ -304,7 +354,7 @@ export default async function CollectionPage() {
                                     ) : null}
                                   </>
                                 ) : (
-                                  <span>Last updated —</span>
+                                  <span>Last updated: not yet</span>
                                 )}
                               </div>
                             </div>

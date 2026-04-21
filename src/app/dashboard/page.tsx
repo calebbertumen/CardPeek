@@ -24,10 +24,10 @@ export default async function DashboardPage() {
 
   const scheduleLine =
     subscription.planId === "starter"
-      ? "Starter is free—no charges."
+      ? "Starter is free. No charges."
       : subscription.planId === "collector"
         ? subscription.cancelAtPeriodEnd && subscription.currentPeriodEnd
-          ? `Cancelled — Collector access until ${formatSubscriptionPeriodEndDate(subscription.currentPeriodEnd)}. No further charges.`
+          ? `Cancelled. Collector access until ${formatSubscriptionPeriodEndDate(subscription.currentPeriodEnd)}. No further charges.`
           : subscription.currentPeriodEnd
             ? `Renews on ${formatSubscriptionPeriodEndDate(subscription.currentPeriodEnd)}.`
             : "Renewal date will appear here after your subscription is confirmed with Stripe."

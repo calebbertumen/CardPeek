@@ -7,6 +7,21 @@ export function formatUsd(amount: number): string {
   }).format(amount);
 }
 
+/** Whole-dollar currency, for compact ranges (e.g. fair-price bands). */
+export function formatUsdWhole(amount: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+export function formatUsdSpan(low: number, high: number): string {
+  if (low === high) return formatUsdWhole(low);
+  return `${formatUsdWhole(low)} to ${formatUsdWhole(high)}`;
+}
+
 export function formatSoldDate(d: Date): string {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",

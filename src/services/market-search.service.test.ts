@@ -116,8 +116,11 @@ describe("searchCardMarketData (lifetime updated lookups)", () => {
       lastReturnedAt: null,
       lastScrapeError: null,
       ebaySearchKeyword: "pikachu",
+      priorScrapeAvgPrice: null,
     });
-    cardCacheListingFindManyMock.mockResolvedValueOnce([{ soldPrice: 10, position: 1 }]);
+    cardCacheListingFindManyMock.mockResolvedValueOnce([
+      { soldPrice: 10, position: 1, soldDate: new Date("2024-06-01") },
+    ]);
 
     getEntitlementMock.mockResolvedValueOnce({
       allowed: true,
@@ -182,8 +185,11 @@ describe("searchCardMarketData (lifetime updated lookups)", () => {
       lastReturnedAt: null,
       lastScrapeError: null,
       ebaySearchKeyword: "pikachu",
+      priorScrapeAvgPrice: null,
     });
-    cardCacheListingFindManyMock.mockResolvedValueOnce([{ soldPrice: 10, position: 1 }]);
+    cardCacheListingFindManyMock.mockResolvedValueOnce([
+      { soldPrice: 10, position: 1, soldDate: new Date("2024-06-01") },
+    ]);
 
     const { searchCardMarketData } = await import("./market-search.service");
     const res = await searchCardMarketData({

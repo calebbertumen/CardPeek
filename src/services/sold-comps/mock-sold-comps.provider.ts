@@ -2,7 +2,7 @@ import type { SoldCompListingDTO, SoldCompsFetchInput, SoldCompsProvider } from 
 import { getSoldComps } from "@/lib/services/soldCompsProvider";
 
 /**
- * Mock sold comps — UI and cache consume normalized DTOs only.
+ * Mock sold comps  -  UI and cache consume normalized DTOs only.
  * Raw mock payload is built in @/lib/mock; swap getSoldComps for a scraper-backed implementation later.
  */
 export class MockSoldCompsProvider implements SoldCompsProvider {

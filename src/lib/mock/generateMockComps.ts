@@ -82,11 +82,11 @@ export function generateDate(offsetDays: number): string {
 }
 
 const TITLE_SUFFIXES = [
-  " — Free Shipping",
+  ", Free Shipping",
   " | Fast Ship",
   " 🔥 Pokémon TCG",
   " (Authentic)",
-  " — Sold as Pictured",
+  ", Sold as Pictured",
 ];
 
 const TITLE_PREFIXES = ["", "NM ", "MINT ", ""];
@@ -124,7 +124,7 @@ function computeStats(prices: number[]): Pick<MockComps, "avgPrice" | "medianPri
 
 /**
  * Deterministic mock sold comps shaped like a future real provider payload.
- * Same card + condition yields a stable baseline; per-listing noise is seeded (±10–15%).
+ * Same card + condition yields a stable baseline; per-listing noise is seeded (about ±10% to ±15%).
  */
 export function generateMockComps(cardName: string, condition: string): MockComps {
   const bucket = normalizeConditionBucket(condition);

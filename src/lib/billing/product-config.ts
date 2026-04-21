@@ -1,5 +1,5 @@
 /**
- * Product rules — single source of truth for plan limits and pricing display.
+ * Product rules  -  single source of truth for plan limits and pricing display.
  * Adjust values here; avoid scattering magic numbers across UI and services.
  */
 

@@ -64,9 +64,9 @@ export function normalizeConditionBucket(raw: string): ConditionBucket {
 }
 
 export const CONDITION_OPTIONS: { value: ConditionBucket; label: string }[] = [
-  { value: "raw_nm", label: "Raw — Near Mint" },
-  { value: "raw_lp", label: "Raw — Lightly Played" },
-  { value: "raw_mp_hp", label: "Raw — Moderately / Heavily Played" },
+  { value: "raw_nm", label: "Raw (Near Mint)" },
+  { value: "raw_lp", label: "Raw (Lightly Played)" },
+  { value: "raw_mp_hp", label: "Raw (Moderately / Heavily Played)" },
   { value: "psa_8", label: "PSA 8" },
   { value: "psa_9", label: "PSA 9" },
   { value: "psa_10", label: "PSA 10" },

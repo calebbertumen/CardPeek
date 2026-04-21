@@ -82,12 +82,12 @@ export function ListingCards({ listings, tier, listingsCount, ebaySoldSearchUrl 
           <div className="rounded-2xl border border-border/80 bg-surface-alt/30 px-4 py-3 text-sm text-muted-foreground sm:px-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p>
-                Average and range are based on real recent sales. Listing details are locked on Free.
+                Want decision-level confidence? Collector shows the exact 5 sales behind this snapshot (titles, condition, and why prices vary).
               </p>
               <button
                 type="button"
                 className="text-xs font-medium text-foreground underline underline-offset-4"
-                title="To keep CardPeek cost-efficient, Free shows the pricing summary while Collector unlocks the underlying sold listings used to calculate it."
+                title="Free shows the headline snapshot. Collector unlocks the underlying sold listings used to calculate it, plus the context that explains the spread."
               >
                 Why locked?
               </button>
@@ -106,24 +106,29 @@ export function ListingCards({ listings, tier, listingsCount, ebaySoldSearchUrl 
                       <p className="text-xs font-medium text-muted-foreground">Locked listing</p>
                       <div className="flex items-center gap-2">
                         <Lock className="h-4 w-4 text-muted-foreground" aria-hidden />
-                        <p className="text-base font-medium text-foreground">Unlock full market snapshot</p>
+                        <p className="text-base font-medium text-foreground">Unlock the comps behind the estimate</p>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        {tier === "preview" ? "Create a free account to unlock Starter." : "Upgrade to Collector to view sold listings."}
+                        {tier === "preview"
+                          ? "Create a free account to unlock Starter."
+                          : "See the exact sold prices and titles used here so you can understand outliers and verify the range."}
                       </p>
                     </div>
                     <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
-                      <div className="h-7 w-28 rounded-md bg-surface-alt/60 blur-[1px]" aria-hidden />
+                      <div className="flex items-center gap-2" aria-hidden>
+                        <div className="h-7 w-16 rounded-md bg-surface-alt/60 blur-[1px]" />
+                        <div className="h-7 w-16 rounded-md bg-surface-alt/60 blur-[1px]" />
+                      </div>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent className="border-t border-border/60 bg-surface-alt/40 pt-3">
                   <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
                     <span className="rounded-md bg-surface-alt/60 px-2 py-1 blur-[1px]" aria-hidden>
-                      Sold — —
+                      Sold (hidden)
                     </span>
                     <span className="rounded-md bg-surface-alt/60 px-2 py-1 blur-[1px]" aria-hidden>
-                      Condition — —
+                      Condition (hidden)
                     </span>
                   </div>
                 </CardContent>
@@ -154,7 +159,7 @@ export function ListingCards({ listings, tier, listingsCount, ebaySoldSearchUrl 
                 <p className="text-sm text-muted-foreground">
                   {tier === "preview"
                     ? "Free accounts unlock more searches and a more detailed market snapshot."
-                    : "Upgrade to Collector to see the actual eBay sales behind the price."}
+                    : "Upgrade to Collector to see the exact eBay sales behind the snapshot: titles, condition/grade hints, and why some sales land lower or higher."}
                 </p>
               </div>
               <div className="shrink-0">
@@ -163,14 +168,6 @@ export function ListingCards({ listings, tier, listingsCount, ebaySoldSearchUrl 
                     {tier === "preview" ? "Create free account" : "Upgrade to Collector"}
                   </Link>
                 </Button>
-                <div className="mt-2 text-center sm:text-right">
-                  <Link
-                    href={tier === "preview" ? "/login?callbackUrl=/search" : "/pricing"}
-                    className="text-xs font-medium text-muted-foreground underline underline-offset-4 hover:text-foreground"
-                  >
-                    {tier === "preview" ? "Log in" : "Compare plans"}
-                  </Link>
-                </div>
               </div>
             </div>
           </div>

@@ -64,7 +64,7 @@ export function buildEbaySoldListingsSearchUrl(keyword: string, siteHost: string
 
 /**
  * Normalizes a keyword for equality checks (same card + minor punctuation/space variants).
- * Used alongside `buildCacheKey` from card identity — this is the string form of the search.
+ * Used alongside `buildCacheKey` from card identity  -  this is the string form of the search.
  */
 export function normalizeSoldSearchKeywordForDedupe(keyword: string): string {
   return keyword

@@ -13,7 +13,7 @@ export async function SiteHeader() {
         <Link
           href="/"
           className="relative shrink-0 outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          aria-label="CardPeek — Home"
+          aria-label="CardPeek home"
         >
           <Image
             src="/cardpeek-logo.png"

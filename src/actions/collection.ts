@@ -48,7 +48,7 @@ export async function addToCollectionAction(input: {
   }
 
   const planId = await getUserPlanId(dbUser.id);
-  /** Starter matches search UX (no condition filters) — collection is always Near Mint. */
+  /** Starter matches search UX (no condition filters)  -  collection is always Near Mint. */
   const effectiveCondition: CollectionCondition | string =
     planId === "starter" ? "NM" : input.condition;
 

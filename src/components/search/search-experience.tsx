@@ -60,7 +60,7 @@ function ResultsSection({ state, pending }: { state: SearchCardState | null; pen
           ) : (
             <p className="text-sm text-muted-foreground">
               A refresh may already be queued. Data is refreshed automatically when needed; most cards update within
-              24–72 hours.
+              24 to 72 hours.
             </p>
           )}
         </div>
@@ -127,7 +127,7 @@ export function SearchExperience({
   const formRef = useRef<HTMLFormElement>(null);
   /** Blocks duplicate form action invocations (e.g. React Strict Mode) from charging preview twice per click. */
   const submitGuardRef = useRef(false);
-  /** Last URL-aligned or explicitly submitted search — background poll must not read live inputs while the user is typing. */
+  /** Last URL-aligned or explicitly submitted search. Background poll must not read live inputs while the user is typing. */
   const lastSubmittedSearchRef = useRef<SearchFieldsSnapshot>({
     name: formDefaults.name,
     setName: formDefaults.setName,

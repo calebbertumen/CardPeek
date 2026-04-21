@@ -41,7 +41,7 @@ export const ENTITLEMENTS_BY_TIER: Record<AccessTier, Entitlements> = {
   },
   collector: {
     tier: "collector",
-    /** “Effectively unlimited” — high backend cap to prevent abuse. */
+    /** “Effectively unlimited”  -  high backend cap to prevent abuse. */
     searchesPerDay: 10_000,
     searchesPerDaySoftCap: 10_000,
     previewSearchesTotalLimit: null,

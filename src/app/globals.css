@@ -9,7 +9,7 @@
 }
 
 @layer base {
-  /* CardPeek — Emerald + black (single dark theme; tokens drive Tailwind theme.extend) */
+  /* CardPeek  -  Emerald + black (single dark theme; tokens drive Tailwind theme.extend) */
   :root {
     --background: #0b0b0b;
     --foreground: #ffffff;

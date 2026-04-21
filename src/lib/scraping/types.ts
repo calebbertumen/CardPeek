@@ -12,7 +12,7 @@ export type ScrapedSoldListing = {
   raw?: unknown;
 };
 
-/** Candidate row from Apify before / after HTML trust checks — used by sold-listing filters. */
+/** Candidate row from Apify before / after HTML trust checks  -  used by sold-listing filters. */
 export type SoldListingCandidate = ScrapedSoldListing;
 
 export type ScrapedCardSnapshot = {

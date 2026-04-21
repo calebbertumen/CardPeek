@@ -17,7 +17,7 @@ export type CancelCollectorIntent = "refund" | "period_end";
 
 /**
  * Server-only cancellation. Refund path uses ONLY `firstCollectorPaymentIntentId` (never latest invoice).
- * When `intent` is `period_end`, never refunds—even inside the 5-day window.
+ * When `intent` is `period_end`, never refunds, even inside the 5-day window.
  */
 export async function cancelCollectorSubscriptionForUser(
   userId: string,
@@ -81,7 +81,7 @@ export async function cancelCollectorSubscriptionForUser(
     try {
       await stripe.subscriptions.cancel(subRow.stripeSubscriptionId);
     } catch (e) {
-      console.error("[billing] cancel after refund failed — manual reconcile", e);
+      console.error("[billing] cancel after refund failed  -  manual reconcile", e);
       return {
         ok: false,
         error: "Refund succeeded but cancelling the subscription failed. Contact support with your account email.",

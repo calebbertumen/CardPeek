@@ -82,7 +82,7 @@ function psaGradesInCombinedText(combined: string): number[] {
   return out;
 }
 
-/** Non-PSA slabs — never treat as the user's PSA bucket. */
+/** Non-PSA slabs  -  never treat as the user's PSA bucket. */
 function mentionsCompetitorGradingSlab(combined: string): boolean {
   return /\bCGC\b/i.test(combined) || /\bBGS\b/i.test(combined) || /\bSGC\b/i.test(combined) || /\bBECKETT\b/i.test(combined);
 }
@@ -118,7 +118,7 @@ function titleMatchesPsa8(combined: string): boolean {
 
 /**
  * Keep sold rows that match the user's condition bucket (title + condition label heuristics).
- * PSA buckets require that grade (or Gem Mint 10 variants) in the listing text — we do **not** infer PSA from
+ * PSA buckets require that grade (or Gem Mint 10 variants) in the listing text  -  we do **not** infer PSA from
  * the search keyword alone (that let in wrong cards/grades when eBay broadened results).
  */
 export function soldListingTitleMatchesBucket(
@@ -149,7 +149,7 @@ export function soldListingTitleMatchesBucket(
   return true;
 }
 
-/** True when the URL is a search/browse page — never pair these with `itemId` from the actor. */
+/** True when the URL is a search/browse page  -  never pair these with `itemId` from the actor. */
 export function isEbaySearchOrBrowseUrl(listingUrl: string): boolean {
   return (
     /\/sch\//i.test(listingUrl) ||

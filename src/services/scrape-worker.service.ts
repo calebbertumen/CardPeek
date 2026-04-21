@@ -15,9 +15,9 @@ function storeRawPayload(): boolean {
   return process.env.SCRAPING_STORE_RAW_PAYLOAD === "true";
 }
 
-/** Pending jobs older than this never got a worker claim — release Starter reservations. */
+/** Pending jobs older than this never got a worker claim  -  release Starter reservations. */
 const STALE_PENDING_MS = 30 * 60 * 1000;
-/** Running jobs stuck (e.g. serverless timeout mid-scrape) — refund so credits aren’t held forever. */
+/** Running jobs stuck (e.g. serverless timeout mid-scrape)  -  refund so credits aren’t held forever. */
 const STALE_RUNNING_MS = 45 * 60 * 1000;
 
 async function failStalePendingSoldJobs(): Promise<void> {
@@ -163,6 +163,11 @@ export async function processPendingScrapeJobs(input?: { limit?: number }): Prom
       const n = listings.length;
 
       const cache = await prisma.$transaction(async (tx) => {
+        const priorRow = await tx.cardCache.findUnique({
+          where: { cacheKey: next.cacheKey },
+          select: { avgPrice: true },
+        });
+
         const c = await tx.cardCache.upsert({
           where: { cacheKey: next.cacheKey },
           create: {
@@ -175,6 +180,7 @@ export async function processPendingScrapeJobs(input?: { limit?: number }): Prom
             medianPrice: new Prisma.Decimal(scraped.medianPrice.toFixed(2)),
             lowPrice: new Prisma.Decimal(scraped.minPrice.toFixed(2)),
             highPrice: new Prisma.Decimal(scraped.maxPrice.toFixed(2)),
+            priorScrapeAvgPrice: null,
             listingsCount: n,
             lastScrapedAt: scraped.scrapedAt,
             lastReturnedAt: null,
@@ -183,6 +189,7 @@ export async function processPendingScrapeJobs(input?: { limit?: number }): Prom
           update: {
             cardVariantId: variant.id,
             ebaySearchKeyword: keyword,
+            priorScrapeAvgPrice: priorRow?.avgPrice ?? null,
             avgPrice: new Prisma.Decimal(scraped.averagePrice.toFixed(2)),
             medianPrice: new Prisma.Decimal(scraped.medianPrice.toFixed(2)),
             lowPrice: new Prisma.Decimal(scraped.minPrice.toFixed(2)),

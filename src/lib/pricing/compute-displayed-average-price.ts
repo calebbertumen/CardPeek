@@ -1,6 +1,14 @@
 export type PriceComputationResult = {
   displayedAveragePrice: number | null;
-  pricingMethod: "single" | "mean_2" | "mean_3" | "mean_4" | "trimmed_mean_5" | "none";
+  pricingMethod:
+    | "single"
+    | "mean_2"
+    | "mean_3"
+    | "trimmed_mean_4"
+    | "trimmed_mean_5"
+    | "outlier_trim_high_3"
+    | "outlier_trim_low_3"
+    | "none";
   /** Count of valid prices after sanitization. */
   listingCount: number;
   /** Prices that were included in the displayed average calculation. */
@@ -17,13 +25,28 @@ function sanitizePrices(prices: number[]): number[] {
   return prices.filter((p) => Number.isFinite(p) && p > 0);
 }
 
+/** True when the displayed average intentionally ignores at least one stored comp. */
+export function averageExcludesSomeListings(method: PriceComputationResult["pricingMethod"]): boolean {
+  return (
+    method === "trimmed_mean_5" ||
+    method === "trimmed_mean_4" ||
+    method === "outlier_trim_high_3" ||
+    method === "outlier_trim_low_3"
+  );
+}
+
 /**
  * Compute a currency-friendly displayed average from recent sold prices with lightweight
- * outlier protection when there are exactly 5 valid prices (trim lowest & highest).
+ * outlier protection: trims extremes at 4 to 5 comps, and trims a single obvious outlier at 3 comps.
  */
 export function computeDisplayedAveragePrice(prices: number[]): PriceComputationResult {
   const valid = sanitizePrices(prices);
   const n = valid.length;
+
+  /** Upstream should cap at 5; if not, only the first five comps participate (matches CardPeek snapshots). */
+  if (n > 5) {
+    return computeDisplayedAveragePrice(valid.slice(0, 5));
+  }
 
   if (n === 0) {
     return {
@@ -60,21 +83,72 @@ export function computeDisplayedAveragePrice(prices: number[]): PriceComputation
     };
   }
 
-  // For 2–4 listings: simple mean of all valid prices (easy to adjust later).
-  const sum = valid.reduce((a, b) => a + b, 0);
-  const avg = sum / n;
-  const pricingMethod = ((): PriceComputationResult["pricingMethod"] => {
-    if (n === 2) return "mean_2";
-    if (n === 3) return "mean_3";
-    if (n === 4) return "mean_4";
-    // Defensive fallback: if upstream ever changes count, keep behavior predictable.
-    return "mean_4";
-  })();
+  // For 4 listings: trim lowest & highest (same spirit as the 5-sale rule  -  one bad comp hurts the mean).
+  if (n === 4) {
+    const sorted = [...valid].sort((a, b) => a - b);
+    const excludedPrices = [sorted[0]!, sorted[3]!];
+    const includedPrices = sorted.slice(1, 3);
+    const avg = includedPrices.reduce((a, b) => a + b, 0) / includedPrices.length;
+    return {
+      displayedAveragePrice: roundUsd(avg),
+      pricingMethod: "trimmed_mean_4",
+      listingCount: 4,
+      includedPrices,
+      excludedPrices,
+    };
+  }
 
+  // For 3 listings: drop a single clearly-separated outlier when the gaps say so.
+  if (n === 3) {
+    const sorted = [...valid].sort((a, b) => a - b);
+    const [a, b, c] = sorted;
+    const leftGap = b - a;
+    const rightGap = c - b;
+    const mid = b;
+    const minMaterial = Math.max(mid * 0.05, 0.5);
+
+    if (rightGap > 2.5 * Math.max(leftGap, minMaterial) && rightGap > mid * 0.15) {
+      const includedPrices = [a, b];
+      const avg = (a + b) / 2;
+      return {
+        displayedAveragePrice: roundUsd(avg),
+        pricingMethod: "outlier_trim_high_3",
+        listingCount: 3,
+        includedPrices,
+        excludedPrices: [c],
+      };
+    }
+
+    if (leftGap > 2.5 * Math.max(rightGap, minMaterial) && leftGap > mid * 0.15) {
+      const includedPrices = [b, c];
+      const avg = (b + c) / 2;
+      return {
+        displayedAveragePrice: roundUsd(avg),
+        pricingMethod: "outlier_trim_low_3",
+        listingCount: 3,
+        includedPrices,
+        excludedPrices: [a],
+      };
+    }
+
+    const sum = a + b + c;
+    const avg = sum / 3;
+    return {
+      displayedAveragePrice: roundUsd(avg),
+      pricingMethod: "mean_3",
+      listingCount: 3,
+      includedPrices: [...sorted],
+      excludedPrices: [],
+    };
+  }
+
+  // n === 2: simple mean of both (too little signal to trim safely).
+  const sum = valid[0]! + valid[1]!;
+  const avg = sum / 2;
   return {
     displayedAveragePrice: roundUsd(avg),
-    pricingMethod,
-    listingCount: n,
+    pricingMethod: "mean_2",
+    listingCount: 2,
     includedPrices: [...valid],
     excludedPrices: [],
   };

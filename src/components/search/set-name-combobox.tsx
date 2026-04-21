@@ -121,7 +121,7 @@ export function SetNameCombobox({
     setHighlighted(0);
   }, [value, open]);
 
-  /** True when we should show a dropdown panel (not only when filtered has rows — avoids empty panel during API load). */
+  /** True when we should show a dropdown panel (not only when filtered has rows). Avoids empty panel during API load. */
   const hasDropdownContent =
     loading ||
     filtered.length > 0 ||
@@ -239,7 +239,7 @@ export function SetNameCombobox({
   const listRows = loading
     ? [{ key: "__loading", label: "Loading sets…", disabled: true }]
     : loadError && options.length === 0
-      ? [{ key: "__error", label: "Set list unavailable — type a set name.", disabled: true }]
+      ? [{ key: "__error", label: "Set list unavailable. Type a set name.", disabled: true }]
       : filtered.length > 0
         ? filtered.map((opt) => ({ key: opt, label: opt, disabled: false as const }))
         : value.trim() !== ""

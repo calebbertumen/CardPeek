@@ -11,7 +11,7 @@ export default function TermsPage() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-14 sm:px-6">
       <h1 className="text-3xl font-semibold tracking-tight">Terms of Service</h1>
-      <p className="mt-2 text-sm text-muted-foreground">Effective Date: April 14, 2026</p>
+      <p className="mt-2 text-sm text-muted-foreground">Effective Date: April 21, 2026</p>
 
       <div className="mt-8 space-y-8 text-sm leading-relaxed text-muted-foreground">
         <section className="space-y-3">
@@ -28,23 +28,31 @@ export default function TermsPage() {
           <p>CardPeek provides tools that allow users to:</p>
           <ul className="list-inside list-disc space-y-2 pl-1">
             <li>Search for trading card pricing data</li>
-            <li>View recent sales data</li>
-            <li>Access pricing insights based on marketplace activity</li>
+            <li>View recent marketplace sales data</li>
+            <li>Access aggregated pricing insights and market summaries</li>
             <li>Build and track a personal collection of trading cards</li>
           </ul>
 
           <div className="space-y-3 pt-1">
             <p>
-              <strong className="text-foreground">Collection Feature</strong>
+              <strong className="text-foreground">Pricing Insights &amp; Market Data</strong>
             </p>
-            <p>CardPeek allows users to save and organize cards into a personal collection.</p>
+            <p>
+              CardPeek processes publicly available marketplace data (e.g., eBay sold listings) to generate pricing
+              insights, which may include:
+            </p>
             <ul className="list-inside list-disc space-y-2 pl-1">
-              <li>Users may add cards identified by card identity and condition</li>
-              <li>Collection values are calculated using cached marketplace data</li>
-              <li>Pricing displayed in collections may not always reflect real-time market conditions</li>
-              <li>Free-tier users may experience limited or delayed pricing updates</li>
-              <li>Paid users may receive refreshed pricing based on system rules</li>
-              <li>Collections are private to each user and are not shared publicly.</li>
+              <li>Estimated market values</li>
+              <li>Typical price ranges</li>
+              <li>Lower-end and higher-end observed price points</li>
+              <li>Summary statistics (e.g., median, low, high, sample size)</li>
+            </ul>
+            <p>These insights are:</p>
+            <ul className="list-inside list-disc space-y-2 pl-1">
+              <li>Generated using internal algorithms and data processing methods</li>
+              <li>Based on historical sold listings, not active listings</li>
+              <li>Not real-time and may be delayed</li>
+              <li>Subject to variability due to condition, timing, listing quality, and market demand</li>
             </ul>
           </div>
 
@@ -53,15 +61,34 @@ export default function TermsPage() {
               <strong className="text-foreground">Important Disclosures</strong>
             </p>
             <ul className="list-inside list-disc space-y-2 pl-1">
-              <li>CardPeek does not provide real-time data</li>
-              <li>Data is collected and updated periodically</li>
-              <li>Information may be delayed, incomplete, or inaccurate</li>
+              <li>CardPeek does not provide financial, investment, or professional advice</li>
+              <li>All pricing information is for informational purposes only</li>
+              <li>Data may be incomplete, inaccurate, or outdated</li>
+              <li>CardPeek does not guarantee pricing accuracy or market outcomes</li>
               <li>
                 CardPeek is an independent tool and is not affiliated with, endorsed by, or sponsored by any marketplace
                 (including eBay)
               </li>
               <li>
-                Users should independently verify all information before making purchasing or financial decisions.
+                Users are responsible for independently verifying information before making buying or selling decisions
+              </li>
+            </ul>
+          </div>
+
+          <div className="space-y-3">
+            <p>
+              <strong className="text-foreground">Collection Feature</strong>
+            </p>
+            <p>CardPeek allows users to save and organize cards into a personal collection.</p>
+            <ul className="list-inside list-disc space-y-2 pl-1">
+              <li>Users may add cards identified by card identity, condition, and quantity</li>
+              <li>Collection values are calculated using cached and processed marketplace data</li>
+              <li>Pricing displayed in collections may not reflect real-time market conditions</li>
+              <li>Free-tier users may experience limited or delayed pricing updates</li>
+              <li>Paid users may receive refreshed pricing based on system rules</li>
+              <li>Collections are private and not shared publicly</li>
+              <li>
+                We reserve the right to modify how collection values are calculated or displayed at any time.
               </li>
             </ul>
           </div>
@@ -111,7 +138,6 @@ export default function TermsPage() {
             <p>
               <strong className="text-foreground">c. Refund Policy</strong>
             </p>
-            <p>CardPeek offers a limited refund policy:</p>
             <ul className="list-inside list-disc space-y-2 pl-1">
               <li>A full refund may be requested within five (5) days of the initial subscription purchase only</li>
               <li>Refund eligibility is limited to one refund per user</li>
@@ -170,14 +196,14 @@ export default function TermsPage() {
             <li>Use the app for unlawful purposes</li>
             <li>Attempt to reverse engineer, copy, or exploit the platform</li>
             <li>Interfere with system performance or security</li>
-            <li>Use bots, scripts, or automation to abuse the service</li>
+            <li>Use bots, scraping tools, or automation to abuse the service</li>
             <li>Circumvent feature limitations, including subscription or usage restrictions</li>
           </ul>
         </section>
 
         <section className="space-y-3">
           <h2 className="text-lg font-semibold text-foreground">6. Data and Accuracy Disclaimer</h2>
-          <p>CardPeek aggregates data from third-party sources.</p>
+          <p>CardPeek aggregates and processes data from third-party sources.</p>
           <p>We do not guarantee:</p>
           <ul className="list-inside list-disc space-y-2 pl-1">
             <li>Accuracy</li>
@@ -185,27 +211,23 @@ export default function TermsPage() {
             <li>Timeliness</li>
             <li>That all relevant listings are captured</li>
           </ul>
-          <p>
-            Data, including pricing shown in search results and collections, is provided for informational purposes only
-            and should not be relied upon as financial or investment advice.
-          </p>
+          <p>All pricing insights, including estimated values, ranges, and summary metrics:</p>
+          <ul className="list-inside list-disc space-y-2 pl-1">
+            <li>Are derived estimates, not definitive valuations</li>
+            <li>May vary significantly due to condition, timing, and market demand</li>
+            <li>Should not be relied upon as financial or investment advice</li>
+          </ul>
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">7. Collection and Data Usage</h2>
+          <h2 className="text-lg font-semibold text-foreground">7. Platform Changes and Data Processing</h2>
+          <p>CardPeek may:</p>
           <ul className="list-inside list-disc space-y-2 pl-1">
-            <li>Collection data (cards saved, conditions, quantities) is stored as part of your account</li>
-            <li>
-              Pricing shown in collections is derived from cached marketplace data and may be shared across users
-            </li>
-            <li>CardPeek does not guarantee that collection values reflect current market prices</li>
-            <li>Free users may see limited or outdated pricing data</li>
-            <li>Paid users may receive refreshed pricing based on system behavior</li>
-            <li>
-              We reserve the right to modify how collection data is stored, grouped, or displayed to improve performance
-              and functionality.
-            </li>
+            <li>Modify how pricing insights are calculated, displayed, or interpreted</li>
+            <li>Change data sources or processing methods</li>
+            <li>Cache and reuse data across users for performance optimization</li>
           </ul>
+          <p>We do not guarantee consistency of outputs over time.</p>
         </section>
 
         <section className="space-y-3">
@@ -257,7 +279,8 @@ export default function TermsPage() {
             <li>Financial losses</li>
             <li>Missed opportunities</li>
             <li>Decisions made based on app data</li>
-            <li>Inaccurate or delayed information</li>
+            <li>Inaccurate, delayed, or incomplete information</li>
+            <li>Variability in pricing insights or market conditions</li>
             <li>Service interruptions</li>
           </ul>
           <p>Your use of the service is at your own risk.</p>
@@ -271,7 +294,7 @@ export default function TermsPage() {
           <p>We do not guarantee that:</p>
           <ul className="list-inside list-disc space-y-2 pl-1">
             <li>The service will be uninterrupted or error-free</li>
-            <li>The data will be accurate or reliable</li>
+            <li>The data will be accurate, reliable, or current</li>
           </ul>
         </section>
 

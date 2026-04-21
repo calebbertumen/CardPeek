@@ -16,7 +16,7 @@ import {
 
 type ApifyRun = { id: string; defaultDatasetId: string; status?: string };
 
-/** Apify returns the run when waitForFinish elapses even if the actor is still RUNNING — dataset can be empty until SUCCEEDED. */
+/** Apify returns the run when waitForFinish elapses even if the actor is still RUNNING  -  dataset can be empty until SUCCEEDED. */
 const TERMINAL_RUN_STATUSES = new Set(["SUCCEEDED", "FAILED", "ABORTED", "TIMED-OUT"]);
 
 function isTerminalRunStatus(status: string | undefined): boolean {
@@ -95,7 +95,7 @@ export function ebayHtmlImpliesBestOfferAccepted(html: string): boolean {
   const looksSold = ebayHtmlLooksLikeSoldEndedPage(html);
   if (looksSold && hasStrikeMarkup) return true;
 
-  // Sold pages: struck-through list/BIN price (final sale was lower) — common BO layout.
+  // Sold pages: struck-through list/BIN price (final sale was lower)  -  common BO layout.
   if (looksSold) {
     if (/<\s*s\b[^>]*>[\s\S]{0,120}?[$€£¥][\d,.]+/i.test(html)) return true;
     if (/<\s*del\b[^>]*>[\s\S]{0,120}?[$€£¥][\d,.]+/i.test(html)) return true;
@@ -107,7 +107,7 @@ export function ebayHtmlImpliesBestOfferAccepted(html: string): boolean {
 
 /**
  * Sold / ended listing signals in SSR HTML. Used by `ebayHtmlImpliesBestOfferAccepted` (strikethrough / BO layout),
- * not to reject rows — the Apify actor already targets sold listings.
+ * not to reject rows  -  the Apify actor already targets sold listings.
  */
 export function ebayHtmlLooksLikeSoldEndedPage(html: string): boolean {
   if (!html) return false;
@@ -579,7 +579,7 @@ export async function runEbaySoldListingsActor(input: RunEbaySoldListingsInput):
       durationMs,
       listingCount: 0,
     });
-    // Successful run with no matching sales — persist an empty cache so the UI stops "fetching" and
+    // Successful run with no matching sales  -  persist an empty cache so the UI stops "fetching" and
     // does not retry forever (previously we threw, which failed the job and left no CardCache row).
     return {
       normalizedCardIdentifier: input.normalizedCardIdentifier,

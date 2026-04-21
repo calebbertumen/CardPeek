@@ -8,7 +8,11 @@ import { queueScrapeRefreshIfNeeded } from "@/services/scrape-queue.service";
 import { logSoldScrapeMetric } from "@/services/apify/scrape-metrics";
 import { waitForFreshSoldCache } from "@/services/sold-cache-wait.service";
 import { cleanupStaleSoldScrapeJobs, processPendingScrapeJobs } from "@/services/scrape-worker.service";
-import { computeDisplayedAveragePrice } from "@/lib/pricing/compute-displayed-average-price";
+import {
+  averageExcludesSomeListings,
+  computeDisplayedAveragePrice,
+} from "@/lib/pricing/compute-displayed-average-price";
+import { buildMarketSnapshotInsights, type MarketSnapshotInsights } from "@/lib/pricing/market-snapshot-insights";
 import {
   getFreshScrapeEntitlementForUser,
   queueStarterFreshScrapeIfAllowed,
@@ -45,11 +49,12 @@ export type MarketSearchResult =
         isStale: boolean;
         /** True while cache is stale and a sold scrape is queued or in-flight (drives polling / worker kick). */
         isRefreshing: boolean;
-        /** True only when this request created a new scrape job — show “Fetching…” UI (not for duplicate already-queued jobs). */
+        /** True only when this request created a new scrape job  -  show “Fetching…” UI (not for duplicate already-queued jobs). */
         showFetchingBanner: boolean;
         lastScrapeError?: string | null;
         ebaySearchKeyword: string | null;
         freeUpdatedLookups: null | { limit: number; used: number; remaining: number };
+        snapshotInsights: MarketSnapshotInsights;
         listings: Array<{
           title: string;
           source: string;
@@ -173,26 +178,28 @@ export async function searchCardMarketData(input: {
     };
   }
 
-  const statsPre = await getCardSearchStats(card.normalizedCardKey);
+  const cacheKey = buildCacheKey(card.normalizedCardKey, conditionBucket);
+  const [statsPre, existingBase] = await Promise.all([
+    getCardSearchStats(card.normalizedCardKey),
+    prisma.cardCache.findUnique({
+      where: { cacheKey },
+      select: {
+        id: true,
+        avgPrice: true,
+        medianPrice: true,
+        lowPrice: true,
+        highPrice: true,
+        listingsCount: true,
+        lastScrapedAt: true,
+        lastReturnedAt: true,
+        lastScrapeError: true,
+        ebaySearchKeyword: true,
+        priorScrapeAvgPrice: true,
+      },
+    }),
+  ]);
   const policy = getCardCachePolicy(statsPre);
   const ttlMs = cachePolicyTtlMs(policy);
-
-  const cacheKey = buildCacheKey(card.normalizedCardKey, conditionBucket);
-  const existingBase = await prisma.cardCache.findUnique({
-    where: { cacheKey },
-    select: {
-      id: true,
-      avgPrice: true,
-      medianPrice: true,
-      lowPrice: true,
-      highPrice: true,
-      listingsCount: true,
-      lastScrapedAt: true,
-      lastReturnedAt: true,
-      lastScrapeError: true,
-      ebaySearchKeyword: true,
-    },
-  });
 
   // Non-blocking analytics: don't keep cache-hit latency hostage to a write.
   void Promise.resolve(recordCardSearchEvent(card.normalizedCardKey, userId)).catch(() => {
@@ -278,6 +285,7 @@ export async function searchCardMarketData(input: {
         lastReturnedAt: true,
         lastScrapeError: true,
         ebaySearchKeyword: true,
+        priorScrapeAvgPrice: true,
       },
     });
     if (existing) {
@@ -332,7 +340,7 @@ export async function searchCardMarketData(input: {
     } else if (tier === "starter" && userId) {
       // Run the worker before re-checking entitlements: queueing a refresh reserves a credit, so
       // `remaining` can be 0 until the job consumes or refunds. Otherwise we'd return FREE_LIFETIME_SCRAPE_LIMIT
-      // without ever running the worker — leaving `ScrapeJob` pending and `freeLifetimeUpdatedLookupsReserved` stuck.
+      // without ever running the worker  -  leaving `ScrapeJob` pending and `freeLifetimeUpdatedLookupsReserved` stuck.
       if (backgroundRefreshPending) {
         await processPendingScrapeJobs({ limit: 1 });
         await waitForFreshSoldCache({ cacheKey, ttlMs });
@@ -349,6 +357,7 @@ export async function searchCardMarketData(input: {
             lastReturnedAt: true,
             lastScrapeError: true,
             ebaySearchKeyword: true,
+            priorScrapeAvgPrice: true,
           },
         });
       }
@@ -359,7 +368,7 @@ export async function searchCardMarketData(input: {
           ? { limit: ent.limit, used: ent.used, remaining: ent.remaining }
           : undefined;
       // After the last lifetime scrape succeeds, `used === limit` so `allowed` is false, but we already
-      // have `existing` cache — still show results instead of FREE_LIFETIME_SCRAPE_LIMIT.
+      // have `existing` cache  -  still show results instead of FREE_LIFETIME_SCRAPE_LIMIT.
       if (!ent.allowed && !existing) {
         return {
           kind: "no_data",
@@ -441,15 +450,6 @@ export async function searchCardMarketData(input: {
     suppressUpdatingUi ? false : cacheIsFresh ? false : collectorDidQueueNew || starterDidQueueNew;
   const isRefreshingFinal = showFetchingBannerFinal;
 
-  const starterCounts =
-    tier === "starter" && userId
-      ? await getFreshScrapeEntitlementForUser({ tier, userId })
-      : null;
-  const freeUpdatedLookups =
-    starterCounts && starterCounts.limit != null && starterCounts.used != null && starterCounts.remaining != null
-      ? { limit: starterCounts.limit, used: starterCounts.used, remaining: starterCounts.remaining }
-      : null;
-
   if (cacheIsFresh) {
     logSoldScrapeMetric({
       event: "apify_ebay_sold",
@@ -459,49 +459,72 @@ export async function searchCardMarketData(input: {
     });
   }
 
-  const listingPrices = await prisma.cardCacheListing.findMany({
-    where: { cardCacheId: existing.id },
-    select: { soldPrice: true, position: true },
-    orderBy: { position: "asc" },
-  });
+  const listingTake = input.entitlements.recentSalesVisibleCount;
+  const [listingRowsFull, starterCounts] = await Promise.all([
+    prisma.cardCacheListing.findMany({
+      where: { cardCacheId: existing.id },
+      orderBy: { position: "asc" },
+      select: {
+        title: true,
+        source: true,
+        soldPrice: true,
+        soldDate: true,
+        conditionLabel: true,
+        gradeLabel: true,
+        rawOrGraded: true,
+        position: true,
+      },
+    }),
+    tier === "starter" && userId
+      ? getFreshScrapeEntitlementForUser({ tier, userId })
+      : Promise.resolve(null),
+  ]);
+
+  const freeUpdatedLookups =
+    starterCounts && starterCounts.limit != null && starterCounts.used != null && starterCounts.remaining != null
+      ? { limit: starterCounts.limit, used: starterCounts.used, remaining: starterCounts.remaining }
+      : null;
+
+  const listingPrices = listingRowsFull.map((l) => ({
+    soldPrice: Number(l.soldPrice),
+    position: l.position,
+    soldDate: l.soldDate,
+  }));
 
   const listings =
-    input.entitlements.recentSalesVisibleCount > 0
-      ? await prisma.cardCacheListing
-          .findMany({
-            where: { cardCacheId: existing.id },
-            orderBy: { position: "asc" },
-            take: input.entitlements.recentSalesVisibleCount,
-            select: {
-              title: true,
-              source: true,
-              soldPrice: true,
-              soldDate: true,
-              conditionLabel: true,
-              gradeLabel: true,
-              rawOrGraded: true,
-              position: true,
-            },
-          })
-          .then((rows) =>
-            rows.map((l) => ({
-              title: l.title,
-              source: l.source,
-              soldPrice: Number(l.soldPrice),
-              soldDate: l.soldDate,
-              listingUrl: "",
-              conditionLabel: l.conditionLabel,
-              gradeLabel: l.gradeLabel,
-              rawOrGraded: l.rawOrGraded,
-              position: l.position,
-            })),
-          )
+    listingTake > 0
+      ? listingRowsFull.slice(0, listingTake).map((l) => ({
+          title: l.title,
+          source: l.source,
+          soldPrice: Number(l.soldPrice),
+          soldDate: l.soldDate,
+          listingUrl: "",
+          conditionLabel: l.conditionLabel,
+          gradeLabel: l.gradeLabel,
+          rawOrGraded: l.rawOrGraded,
+          position: l.position,
+        }))
       : [];
 
-  const pricing = computeDisplayedAveragePrice(listingPrices.map((l) => Number(l.soldPrice)));
+  const pricing = computeDisplayedAveragePrice(listingPrices.map((l) => l.soldPrice));
   const avgExcludedPrices =
-    pricing.pricingMethod === "trimmed_mean_5" && pricing.excludedPrices.length > 0
+    averageExcludesSomeListings(pricing.pricingMethod) && pricing.excludedPrices.length > 0
       ? pricing.excludedPrices
+      : null;
+
+  const snapshotInsights =
+    listingPrices.length > 0
+      ? buildMarketSnapshotInsights({
+          listings: listingPrices.map((l) => ({
+            soldPrice: Number(l.soldPrice),
+            soldDate: l.soldDate,
+            position: l.position,
+          })),
+          snapshotLow: Number(existing.lowPrice),
+          snapshotHigh: Number(existing.highPrice),
+          priorScrapeAvgPrice:
+            existing.priorScrapeAvgPrice != null ? Number(existing.priorScrapeAvgPrice) : null,
+        })
       : null;
 
   return {
@@ -537,6 +560,16 @@ export async function searchCardMarketData(input: {
           conditionBucket,
         }) || null,
       freeUpdatedLookups,
+      snapshotInsights: snapshotInsights ?? {
+        fairPriceLow: Number(existing.lowPrice),
+        fairPriceHigh: Number(existing.highPrice),
+        goodDealUnder: Number(existing.lowPrice),
+        sellTarget: Number(existing.highPrice),
+        confidence: "low",
+        trend: null,
+        headlineUsesCleanedComps: false,
+        explainLine: "Uses sold prices, not active listings.",
+      },
       listings,
     },
   };

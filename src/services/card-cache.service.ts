@@ -209,6 +209,11 @@ export async function writeCardCacheFromListings(input: {
   const { stats, listingsCount, listingCreates } = listingsFromDtos(input.listings, input.takeCount);
 
   const cache = await prisma.$transaction(async (tx) => {
+    const priorRow = await tx.cardCache.findUnique({
+      where: { cacheKey },
+      select: { avgPrice: true },
+    });
+
     const c = await tx.cardCache.upsert({
       where: { cacheKey },
       create: {
@@ -219,11 +224,13 @@ export async function writeCardCacheFromListings(input: {
         medianPrice: new Prisma.Decimal(stats.median.toFixed(2)),
         lowPrice: new Prisma.Decimal(stats.low.toFixed(2)),
         highPrice: new Prisma.Decimal(stats.high.toFixed(2)),
+        priorScrapeAvgPrice: null,
         listingsCount,
         lastScrapedAt: scrapedAt,
         lastReturnedAt: null,
       },
       update: {
+        priorScrapeAvgPrice: priorRow?.avgPrice ?? null,
         avgPrice: new Prisma.Decimal(stats.avg.toFixed(2)),
         medianPrice: new Prisma.Decimal(stats.median.toFixed(2)),
         lowPrice: new Prisma.Decimal(stats.low.toFixed(2)),
@@ -279,7 +286,7 @@ export async function resolveCardSearch(input: {
     return mapCacheToResult(card, input.conditionBucket, existing, existing.listings);
   }
 
-  // Legacy behavior (synchronous scrape) — kept for development fallback.
+  // Legacy behavior (synchronous scrape)  -  kept for development fallback.
   // In MVP tiered gating, paid users should queue refreshes async and Starter users should never scrape.
   const provider = getSoldCompsProvider();
   const dtos = await provider.fetchRecentSold({

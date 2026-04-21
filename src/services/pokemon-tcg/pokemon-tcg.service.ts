@@ -1,5 +1,5 @@
 /**
- * Pokémon TCG API v2 — https://docs.pokemontcg.io/
+ * Pokémon TCG API v2  -  https://docs.pokemontcg.io/
  * Optional header: X-Api-Key: process.env.POKEMON_TCG_API_KEY
  * Structured for future multi-TCG providers behind a shared interface.
  */
@@ -23,7 +23,7 @@ function escapeLucenePrefix(s: string): string {
 }
 
 const MAX_NAME_SUGGESTIONS = 5;
-/** Card rows per request — many prints share the same name, so we paginate until we have enough distinct names. */
+/** Card rows per request  -  many prints share the same name, so we paginate until we have enough distinct names. */
 const NAME_SUGGEST_PAGE_SIZE = 100;
 const NAME_SUGGEST_MAX_PAGES = 12;
 

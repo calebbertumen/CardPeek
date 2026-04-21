@@ -12,7 +12,7 @@ export function resolveEbayWwwHost(): string {
 /**
  * When eBay has no listings that satisfy the full query, it still returns a SERP of
  * "similar" sold items ("Results matching fewer words"). Those rows are not reliable for
- * CardPeek pricing — treat as no data (same as zero Apify rows).
+ * CardPeek pricing  -  treat as no data (same as zero Apify rows).
  *
  * Copy varies slightly by locale/A-B tests; keep patterns conservative.
  */

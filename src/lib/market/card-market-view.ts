@@ -1,4 +1,5 @@
 import type { ConditionBucket } from "@prisma/client";
+import type { MarketSnapshotInsights } from "@/lib/pricing/market-snapshot-insights";
 
 export type CardMarketView = {
   card: {
@@ -25,7 +26,7 @@ export type CardMarketView = {
    * while cached results are shown.
    */
   isRefreshing: boolean;
-  /** True when this request queued a new scrape (vs refresh already pending) — UI can vary the “updating” copy. */
+  /** True when this request queued a new scrape (vs refresh already pending)  -  UI can vary the “updating” copy. */
   showFetchingBanner: boolean;
   /** When the last Apify run failed; estimate may still reflect an older successful scrape. */
   lastScrapeError?: string | null;
@@ -33,6 +34,7 @@ export type CardMarketView = {
   ebaySearchKeyword: string | null;
   /** Starter only: lifetime updated card lookups usage. Null for Collector/Preview. */
   freeUpdatedLookups: null | { limit: number; used: number; remaining: number };
+  snapshotInsights: MarketSnapshotInsights;
   listings: Array<{
     title: string;
     source: string;

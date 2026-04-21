@@ -14,6 +14,6 @@ export function isAnonymousSearchLimitDisabled(): boolean {
   return false;
 }
 
-/** Sold comps cache TTL is adaptive per normalized card key — see `getCardCachePolicy`. */
+/** Sold comps cache TTL is adaptive per normalized card key  -  see `getCardCachePolicy`. */
 
 export const ANONYMOUS_COOKIE = "cardpeek_aid";

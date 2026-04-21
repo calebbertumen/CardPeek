@@ -1,5 +1,5 @@
 /**
- * Pokémon TCG API v2 — list all sets (names for search combobox).
+ * Pokémon TCG API v2  -  list all sets (names for search combobox).
  * https://docs.pokemontcg.io/api-reference/sets/search-sets/
  */
 

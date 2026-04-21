@@ -145,11 +145,26 @@ export async function syncSubscriptionFromStripeForUser(userId: string): Promise
   if (!user?.stripeCustomerId) return;
 
   const stripe = getStripe();
-  const list = await stripe.subscriptions.list({
-    customer: user.stripeCustomerId,
-    status: "all",
-    limit: 10,
-  });
+  let list: Stripe.ApiList<Stripe.Subscription>;
+  try {
+    list = await stripe.subscriptions.list({
+      customer: user.stripeCustomerId,
+      status: "all",
+      limit: 10,
+    });
+  } catch (e) {
+    const message =
+      typeof e === "object" && e && "message" in e ? String((e as { message?: unknown }).message) : "";
+    if (
+      message.includes(
+        "a similar object exists in live mode, but a test mode key was used to make this request",
+      )
+    ) {
+      console.warn("[billing] Stripe mode mismatch for stripeCustomerId; skipping sync");
+      return;
+    }
+    throw e;
+  }
 
   const active = list.data.find(subscriptionGrantsCollectorAccess);
   if (!active) return;

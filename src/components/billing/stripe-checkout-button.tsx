@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
-export function StripeCheckoutButton({ children = "Upgrade to Collector" }: { children?: string }) {
+export function StripeCheckoutButton({ children = "Unlock sales" }: { children?: string }) {
   const [pending, setPending] = useState(false);
 
   return (

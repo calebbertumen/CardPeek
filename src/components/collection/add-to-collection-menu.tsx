@@ -18,6 +18,7 @@ import type { AccessTier } from "@/lib/billing/access";
 import { cn } from "@/lib/utils";
 
 type Props = {
+  className?: string;
   card: {
     normalizedCardKey: string;
     name: string;
@@ -39,7 +40,7 @@ const CONDITION_OPTIONS: Array<{ value: CollectionCondition; label: string }> = 
   { value: "DMG", label: "Damaged (DMG)" },
 ];
 
-export function AddToCollectionMenu({ card, tier, size = "md" }: Props) {
+export function AddToCollectionMenu({ className, card, tier, size = "md" }: Props) {
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<
     | { kind: "idle" }
@@ -83,7 +84,7 @@ export function AddToCollectionMenu({ card, tier, size = "md" }: Props) {
   }, [state.kind]);
 
   return (
-    <div className="space-y-2">
+    <div className={cn("space-y-2", className)}>
       {!allowConditionChoice ? (
         <button
           type="button"

@@ -33,7 +33,7 @@ export type SearchCardState =
       showFetchingBanner?: boolean;
     };
 
-/** For `useFormState` — passes through to {@link searchCardAction}. */
+/** For `useFormState`. Passes through to {@link searchCardAction}. */
 export async function searchCardStateAction(
   _prev: SearchCardState | null,
   formData: FormData,
@@ -42,7 +42,7 @@ export async function searchCardStateAction(
 }
 
 /**
- * Re-run the same search without debiting preview/daily quotas — used to pick up completed background scrapes.
+ * Re-run the same search without debiting preview/daily quotas. Used to pick up completed background scrapes.
  */
 export async function pollCardSearchAction(formData: FormData): Promise<SearchCardState> {
   return searchCardAction(formData, { debitAnonymousQuota: false });
@@ -100,8 +100,11 @@ export async function searchCardAction(
     }
   }
 
+  /** Warm-path optimization: don’t block search on orphan credit cleanup (best-effort safety net). */
   if (tier === "starter" && dbUser) {
-    await releaseOrphanedStarterReservation(dbUser.id);
+    void releaseOrphanedStarterReservation(dbUser.id).catch(() => {
+      // best-effort
+    });
   }
 
   try {
@@ -149,7 +152,7 @@ export async function searchCardAction(
         code: "NO_DATA",
         tier: "collector",
         message:
-          "We’re preparing market data for this card. Check back shortly—listings are updated regularly and may not reflect real-time results.",
+          "We’re preparing market data for this card. Check back shortly. Listings are updated automatically when needed.",
         isRefreshing: result.isRefreshing,
         showFetchingBanner: result.showFetchingBanner,
       };

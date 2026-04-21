@@ -43,7 +43,7 @@ export function LandingPage() {
             <BenefitCard
               icon={<BarChart3 className="h-5 w-5" aria-hidden />}
               title="Recent sold comps"
-              body="See the latest sales that match your card and condition—no clutter, no noise."
+              body="See the latest sales that match your card and condition. Clean view, no clutter."
             />
             <BenefitCard
               icon={<Layers className="h-5 w-5" aria-hidden />}
@@ -53,7 +53,7 @@ export function LandingPage() {
             <BenefitCard
               icon={<Search className="h-5 w-5" aria-hidden />}
               title="Clean card-level search"
-              body="Name, set, number, and condition bucket—structured for serious buying decisions."
+              body="Name, set, number, and condition bucket. Structured for serious buying decisions."
             />
             <BenefitCard
               icon={<Star className="h-5 w-5" aria-hidden />}

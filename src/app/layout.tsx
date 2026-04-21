@@ -9,7 +9,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
   title: {
-    default: "CardPeek — Pokémon sold comps",
+    default: "CardPeek: Pokémon sold comps",
     template: "%s · CardPeek",
   },
   description:

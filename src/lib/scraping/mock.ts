@@ -26,7 +26,7 @@ export const mockScrapingProvider: ScrapingProvider = {
     );
     const { min, max, avg, median } = computeStats(prices);
     const soldListings = prices.map((p, i) => ({
-      title: `${queryText} — sold listing ${i + 1}`,
+      title: `${queryText}, sold listing ${i + 1}`,
       soldPrice: p,
       soldAt: new Date(now.getTime() - i * 86_400_000),
       itemUrl: "https://www.ebay.com/",

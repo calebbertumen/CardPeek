@@ -23,7 +23,7 @@ Production-minded MVP for **Pokémon card sold comps**: search by name (plus opt
    cp .env.example .env
    ```
 
-   Set `DATABASE_URL` and `AUTH_SECRET` (e.g. `openssl rand -base64 32`). Never commit `.env` — it is listed in `.gitignore`; only `.env.example` belongs in the repo.
+   Set `DATABASE_URL` and `AUTH_SECRET` (e.g. `openssl rand -base64 32`). Never commit `.env`  -  it is listed in `.gitignore`; only `.env.example` belongs in the repo.
 
 3. **Database schema**
 
@@ -59,11 +59,11 @@ Production-minded MVP for **Pokémon card sold comps**: search by name (plus opt
 
 ## Project layout (high level)
 
-- `src/app/` — routes (marketing home, search, auth, dashboard, pricing, legal).
-- `src/actions/` — server actions (search, auth).
-- `src/services/` — Pokémon TCG client, sold-comps provider, cache orchestration.
-- `src/components/` — layout, landing, search UI, auth forms.
-- `prisma/schema.prisma` — data model including Auth.js tables and Stripe placeholder.
+- `src/app/`  -  routes (marketing home, search, auth, dashboard, pricing, legal).
+- `src/actions/`  -  server actions (search, auth).
+- `src/services/`  -  Pokémon TCG client, sold-comps provider, cache orchestration.
+- `src/components/`  -  layout, landing, search UI, auth forms.
+- `prisma/schema.prisma`  -  data model including Auth.js tables and Stripe placeholder.
 
 ## Extending to other TCGs
 
