@@ -461,20 +461,23 @@ export async function searchCardMarketData(input: {
 
   const listingTake = input.entitlements.recentSalesVisibleCount;
   const [listingRowsFull, starterCounts] = await Promise.all([
-    prisma.cardCacheListing.findMany({
-      where: { cardCacheId: existing.id },
-      orderBy: { position: "asc" },
-      select: {
-        title: true,
-        source: true,
-        soldPrice: true,
-        soldDate: true,
-        conditionLabel: true,
-        gradeLabel: true,
-        rawOrGraded: true,
-        position: true,
-      },
-    }),
+    listingTake > 0
+      ? prisma.cardCacheListing.findMany({
+          where: { cardCacheId: existing.id },
+          orderBy: { position: "asc" },
+          take: listingTake,
+          select: {
+            title: true,
+            source: true,
+            soldPrice: true,
+            soldDate: true,
+            conditionLabel: true,
+            gradeLabel: true,
+            rawOrGraded: true,
+            position: true,
+          },
+        })
+      : Promise.resolve([]),
     tier === "starter" && userId
       ? getFreshScrapeEntitlementForUser({ tier, userId })
       : Promise.resolve(null),
@@ -493,7 +496,7 @@ export async function searchCardMarketData(input: {
 
   const listings =
     listingTake > 0
-      ? listingRowsFull.slice(0, listingTake).map((l) => ({
+      ? listingRowsFull.map((l) => ({
           title: l.title,
           source: l.source,
           soldPrice: Number(l.soldPrice),
