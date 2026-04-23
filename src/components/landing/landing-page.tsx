@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
+import Image from "next/image";
 import { BarChart3, Layers, Search, Star } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { LandingSearchSectionServer } from "@/components/search/landing-search-section-server";
 import { searchBarWidthClassName } from "@/components/search/search-bar-layout";
 import { cn } from "@/lib/utils";
-import { LandingHeroDemoVideo } from "@/components/landing/landing-hero-demo-video";
 
 export function LandingPage() {
   return (
@@ -19,24 +19,24 @@ export function LandingPage() {
         </div>
 
         <div className="relative mx-auto max-w-6xl px-4 pb-16 pt-4 sm:px-6 sm:pb-20 sm:pt-6 lg:pb-28 lg:pt-8">
-          <div className="grid items-start gap-12 lg:grid-cols-2 lg:gap-16">
-            <div className="space-y-8 text-center lg:text-left">
+          <div className="grid items-start gap-10 lg:grid-cols-[42%_58%] lg:gap-14">
+            <div className="space-y-6 text-center lg:text-left">
               <p className="text-sm font-medium text-primary">Recent sales, simplified</p>
-              <h1 className="text-balance text-4xl font-semibold tracking-tight text-foreground sm:text-5xl lg:text-[3.25rem] lg:leading-[1.1]">
+              <h1 className="mx-auto max-w-[18ch] text-balance text-4xl font-semibold tracking-tight text-foreground sm:text-5xl lg:mx-0 lg:max-w-[17ch] lg:text-[3.1rem] lg:leading-[1.12]">
                 Check recent sold prices in seconds
               </h1>
-              <div className="mx-auto max-w-xl space-y-2 text-muted-foreground lg:mx-0">
-                <p className="text-lg">
+              <div className="mx-auto max-w-[52ch] space-y-2 text-muted-foreground lg:mx-0">
+                <p className="text-base leading-relaxed sm:text-lg">
                   Built from recent sold listings, CardPeek gives you a cleaner pricing snapshot without scrolling
                   through raw sold results.
                 </p>
-                <p className="text-sm">
+                <p className="text-sm leading-snug">
                   Free gives you the snapshot. Collector lets you see the sold listings behind it.
                 </p>
               </div>
             </div>
 
-            <LandingHeroDemoVideo className="mx-auto w-full max-w-xl lg:mx-0 lg:max-w-none" />
+            <LandingHeroPreviewScreenshot className="w-full lg:self-start" />
           </div>
         </div>
       </section>
@@ -68,6 +68,27 @@ export function LandingPage() {
         </div>
       </section>
     </>
+  );
+}
+
+function LandingHeroPreviewScreenshot({ className }: { className?: string }) {
+  return (
+    <div className={className}>
+      <div className="overflow-hidden rounded-2xl border border-border/70 bg-background shadow-lg shadow-black/35">
+        {/* Tighter crop to emphasize the pricing snapshot area */}
+        <div className="relative aspect-[16/10] w-full">
+          <Image
+            src="/marketing/search-results-preview.png"
+            alt="CardPeek results preview showing a summarized sold-listings snapshot"
+            fill
+            priority
+            sizes="(min-width: 1024px) 58vw, 100vw"
+            className="object-cover"
+            style={{ objectPosition: "62% 18%" }}
+          />
+        </div>
+      </div>
+    </div>
   );
 }
 
