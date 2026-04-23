@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { LandingSearchSectionServer } from "@/components/search/landing-search-section-server";
 import { searchBarWidthClassName } from "@/components/search/search-bar-layout";
 import { cn } from "@/lib/utils";
+import { LandingHeroDemoVideo } from "@/components/landing/landing-hero-demo-video";
 
 export function LandingPage() {
   return (
@@ -18,7 +19,7 @@ export function LandingPage() {
         </div>
 
         <div className="relative mx-auto max-w-6xl px-4 pb-16 pt-4 sm:px-6 sm:pb-20 sm:pt-6 lg:pb-28 lg:pt-8">
-          <div className="grid items-center gap-12 lg:gap-16">
+          <div className="grid items-start gap-12 lg:grid-cols-2 lg:gap-16">
             <div className="space-y-8 text-center lg:text-left">
               <p className="text-sm font-medium text-primary">Recent sales, simplified</p>
               <h1 className="text-balance text-4xl font-semibold tracking-tight text-foreground sm:text-5xl lg:text-[3.25rem] lg:leading-[1.1]">
@@ -34,6 +35,8 @@ export function LandingPage() {
                 </p>
               </div>
             </div>
+
+            <LandingHeroDemoVideo className="mx-auto w-full max-w-xl lg:mx-0 lg:max-w-none" />
           </div>
         </div>
       </section>
