@@ -15,6 +15,7 @@ import {
   WIDE_SPREAD_NOTE,
   WIDE_SPREAD_NOTE_SHORT,
 } from "@/lib/pricing/pricing-snapshot-copy";
+import { soldSampleStrengthLabel } from "@/lib/pricing/sold-sample-strength";
 import { PremiumInsightsTeaser } from "@/components/search/premium-insights-teaser";
 
 type Props = {
@@ -208,10 +209,26 @@ export function PricingSummary({ data, tier }: Props) {
               <div>
                 <p className="text-[10px] text-muted-foreground">Sample</p>
                 <p className="mt-0.5 text-sm font-medium text-foreground/80">
-                  {data.listingsCount} sale{data.listingsCount === 1 ? "" : "s"}
+                  {isCollector
+                    ? `Based on ${data.usableCompCount} matching sale${data.usableCompCount === 1 ? "" : "s"}`
+                    : `${data.listingsCount} sale${data.listingsCount === 1 ? "" : "s"}`}
                 </p>
+                {isCollector && data.listingsCount > 0 ? (
+                  <p className="mt-0.5 text-[10px] text-muted-foreground">
+                    {soldSampleStrengthLabel(data.soldSampleStrength)}
+                  </p>
+                ) : null}
               </div>
             </div>
+
+            {data.limitedSampleNote ? (
+              <p className="text-[10px] leading-snug text-muted-foreground">{data.limitedSampleNote}</p>
+            ) : null}
+            {data.showCollectorConditionRefinementHint ? (
+              <p className="text-[10px] leading-snug text-muted-foreground">
+                Access more specific comps when available.
+              </p>
+            ) : null}
 
             {/* 5 Condition + updated */}
             <div className="flex flex-col gap-0.5 border-t border-border/40 pt-3 text-[11px] text-muted-foreground sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
@@ -228,7 +245,9 @@ export function PricingSummary({ data, tier }: Props) {
             <details className="group rounded-lg border border-border/50 bg-muted/10">
               <summary className="cursor-pointer list-none px-3 py-2.5 text-[11px] text-muted-foreground outline-none transition-colors hover:text-foreground sm:px-3.5 [&::-webkit-details-marker]:hidden">
                 <span className="font-medium text-foreground/90">
-                  Based on {data.listingsCount} recent sold listing{data.listingsCount === 1 ? "" : "s"}
+                  Based on{" "}
+                  {isCollector ? data.usableCompCount : data.listingsCount} recent sold listing
+                  {(isCollector ? data.usableCompCount : data.listingsCount) === 1 ? "" : "s"}
                 </span>
                 <span className="ml-1.5 text-muted-foreground underline decoration-dotted underline-offset-2 group-open:hidden">
                   Details

@@ -15,8 +15,9 @@ function computeStats(prices: number[]) {
 }
 
 export const mockScrapingProvider: ScrapingProvider = {
-  async scrapeSoldSnapshot({ normalizedCardIdentifier, queryText, conditionBucket }): Promise<ScrapedCardSnapshot> {
+  async scrapeSoldSnapshot({ normalizedCardIdentifier, queryText, conditionBucket, listingMappingMode }): Promise<ScrapedCardSnapshot> {
     void conditionBucket;
+    void listingMappingMode;
     const now = new Date();
     const base = Math.abs(
       Array.from(normalizedCardIdentifier).reduce((a, c) => a + c.charCodeAt(0), 0) % 60,

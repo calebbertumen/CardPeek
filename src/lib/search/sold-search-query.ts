@@ -2,15 +2,69 @@ import type { ConditionBucket } from "@prisma/client";
 import { CONDITION_OPTIONS } from "@/lib/normalize";
 
 /**
- * Builds a single eBay keyword string for sold-listing search (Apify actor input).
- * Uses card catalog fields + condition context so queries are specific and stable.
+ * Broad raw-lane keyword: catalog identity only (no condition tokens). Still excludes obvious slab keywords for raw.
  */
+export function buildBroadRawEbaySoldSearchKeyword(input: {
+  name: string;
+  setName?: string | null;
+  cardNumber?: string | null;
+}): string {
+  const name = input.name.trim().replace(/\s+/g, " ");
+  const parts: string[] = [];
+  if (name) parts.push(name);
+  const set = input.setName?.trim().replace(/\s+/g, " ");
+  if (set) parts.push(set);
+  const num = input.cardNumber?.trim();
+  if (num) parts.push(`#${num}`);
+  let keyword = parts.join(" ").replace(/\s+/g, " ").trim();
+  keyword = `${keyword} -PSA -BGS -CGC -SGC -TAG -graded`.replace(/\s+/g, " ").trim();
+  return keyword;
+}
+
+/**
+ * Narrow sold search when the broad pass yields too few bucket-matching comps (Collector fallback only).
+ * Title terms are hints only; listings are still classified downstream.
+ */
+export function buildConditionFallbackEbaySoldSearchKeyword(input: {
+  name: string;
+  setName?: string | null;
+  cardNumber?: string | null;
+  conditionBucket: ConditionBucket;
+}): string | null {
+  if (!input.conditionBucket.startsWith("raw_")) return null;
+
+  const base = buildBroadRawEbaySoldSearchKeyword({
+    name: input.name,
+    setName: input.setName,
+    cardNumber: input.cardNumber,
+  });
+
+  const terms: Record<"raw_nm" | "raw_lp" | "raw_mp_hp", string> = {
+    raw_nm: `near mint NM`,
+    raw_lp: `lightly played LP`,
+    raw_mp_hp: `moderately played MP heavily played HP damaged DMG`,
+  };
+
+  const tail = terms[input.conditionBucket as keyof typeof terms];
+  if (!tail) return null;
+
+  return `${base} ${tail}`.replace(/\s+/g, " ").trim();
+}
+
 export function buildEbaySoldSearchKeyword(input: {
   name: string;
   setName?: string | null;
   cardNumber?: string | null;
   conditionBucket: ConditionBucket;
 }): string {
+  if (input.conditionBucket.startsWith("raw_")) {
+    return buildBroadRawEbaySoldSearchKeyword({
+      name: input.name,
+      setName: input.setName,
+      cardNumber: input.cardNumber,
+    });
+  }
+
   const name = input.name.trim().replace(/\s+/g, " ");
   const parts: string[] = [];
   if (name) parts.push(name);
@@ -20,22 +74,13 @@ export function buildEbaySoldSearchKeyword(input: {
   if (num) parts.push(`#${num}`);
 
   const label = CONDITION_OPTIONS.find((c) => c.value === input.conditionBucket)?.label;
-  if (label && input.conditionBucket.startsWith("psa")) {
-    parts.push(label);
-  }
+  if (label) parts.push(label);
 
-  let keyword = parts.join(" ").replace(/\s+/g, " ").trim();
-
-  // eBay supports minus-keywords; narrows sold search away from slabs for raw buckets.
-  if (input.conditionBucket.startsWith("raw_")) {
-    keyword = `${keyword} -PSA -BGS -CGC -SGC -TAG -graded`.replace(/\s+/g, " ").trim();
-  }
-
-  return keyword;
+  return parts.join(" ").replace(/\s+/g, " ").trim();
 }
 
 /**
- * Keyword for eBay sold-search links and API display. Raw buckets always use {@link buildEbaySoldSearchKeyword} so
+ * Keyword for eBay sold-search links and API display. Raw buckets always use {@link buildBroadRawEbaySoldSearchKeyword} so
  * minus-keyword exclusions (e.g. `-TAG`) stay current even when `CardCache.ebaySearchKeyword` was stored by an older scrape.
  */
 export function resolveEbaySoldSearchKeywordForDisplay(input: {
@@ -46,7 +91,11 @@ export function resolveEbaySoldSearchKeywordForDisplay(input: {
   conditionBucket: ConditionBucket;
 }): string {
   if (input.conditionBucket.startsWith("raw_")) {
-    return buildEbaySoldSearchKeyword(input);
+    return buildBroadRawEbaySoldSearchKeyword({
+      name: input.name,
+      setName: input.setName,
+      cardNumber: input.cardNumber,
+    });
   }
   const s = input.storedKeyword?.trim();
   return s || buildEbaySoldSearchKeyword(input);

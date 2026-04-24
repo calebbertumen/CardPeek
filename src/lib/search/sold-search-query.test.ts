@@ -1,10 +1,51 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildBroadRawEbaySoldSearchKeyword,
+  buildConditionFallbackEbaySoldSearchKeyword,
   buildEbaySoldListingsSearchUrl,
   buildEbaySoldSearchKeyword,
   normalizeSoldSearchKeywordForDedupe,
   resolveEbaySoldSearchKeywordForDisplay,
 } from "@/lib/search/sold-search-query";
+
+describe("buildBroadRawEbaySoldSearchKeyword", () => {
+  it("adds slab exclusions without condition tokens", () => {
+    const q = buildBroadRawEbaySoldSearchKeyword({
+      name: "Snorlax",
+      setName: "151",
+      cardNumber: "143",
+    });
+    expect(q).toContain("Snorlax");
+    expect(q).toContain("151");
+    expect(q).toContain("#143");
+    expect(q).toContain("-PSA");
+    expect(q).not.toMatch(/near\s*mint/i);
+  });
+});
+
+describe("buildConditionFallbackEbaySoldSearchKeyword", () => {
+  it("returns null for PSA buckets", () => {
+    expect(
+      buildConditionFallbackEbaySoldSearchKeyword({
+        name: "X",
+        setName: null,
+        cardNumber: null,
+        conditionBucket: "psa_10",
+      }),
+    ).toBeNull();
+  });
+
+  it("appends raw condition hints for raw_nm", () => {
+    const q = buildConditionFallbackEbaySoldSearchKeyword({
+      name: "Pikachu",
+      setName: "Base",
+      cardNumber: "25",
+      conditionBucket: "raw_nm",
+    })!;
+    expect(q.toLowerCase()).toContain("near mint");
+    expect(q).toContain("-PSA");
+  });
+});
 
 describe("buildEbaySoldSearchKeyword", () => {
   it("combines name, set, number, and PSA grade", () => {

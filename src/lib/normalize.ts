@@ -54,6 +54,14 @@ export function buildCacheKey(normalizedCardKey: string, bucket: ConditionBucket
   return `${normalizedCardKey}__${bucket}`;
 }
 
+/**
+ * Shared sold scrape for the raw lane (broad card identity, no condition terms in the eBay keyword).
+ * Separate from per-condition merged snapshots (`buildCacheKey`).
+ */
+export function buildSoldBroadRawCacheKey(normalizedCardKey: string): string {
+  return `${normalizedCardKey}__broad_raw`;
+}
+
 export function normalizeConditionBucket(raw: string): ConditionBucket {
   const underscored = raw.trim().toLowerCase().replace(/[\s-]+/g, "_");
   if (VALID.includes(underscored as ConditionBucket)) {

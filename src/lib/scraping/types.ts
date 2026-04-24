@@ -1,5 +1,8 @@
 import type { ConditionBucket } from "@prisma/client";
 
+/** `strict_bucket`: map + filter to the selected condition. `broad_raw_lane`: keep raw-lane hygiene only (no bucket filter). */
+export type SoldListingMappingMode = "strict_bucket" | "broad_raw_lane";
+
 export type ScrapedSoldListing = {
   title: string;
   soldPrice: number;
@@ -34,6 +37,7 @@ export type ScrapingProvider = {
     conditionBucket: ConditionBucket;
     /** For Apify metrics / dedupe logging only. */
     cacheKey?: string;
+    listingMappingMode?: SoldListingMappingMode;
   }): Promise<ScrapedCardSnapshot>;
 };
 

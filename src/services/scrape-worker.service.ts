@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 import { ensureCardVariantForCard } from "@/services/card-normalization.service";
 import { tryAcquireScrapeLock, releaseScrapeLock } from "@/lib/scrape/scrape-lock";
 import { buildEbaySoldSearchKeyword } from "@/lib/search/sold-search-query";
+import { scrapeTieredRawSoldSnapshot } from "@/services/tiered-sold-scrape.service";
 import { logSoldScrapeMetric } from "@/services/apify/scrape-metrics";
 import {
   consumeReservedFreeUpdatedLookupCredit,
@@ -145,19 +146,33 @@ export async function processPendingScrapeJobs(input?: { limit?: number }): Prom
       }
       lockHeld = true;
 
-      const keyword = buildEbaySoldSearchKeyword({
-        name: card.name,
-        setName: card.setName,
-        cardNumber: card.cardNumber,
-        conditionBucket: next.conditionBucket as ConditionBucket,
-      });
+      const isRawBucket = String(next.conditionBucket).startsWith("raw_");
 
-      const scraped = await scrapeCardMarketData({
-        normalizedCardIdentifier: card.normalizedCardKey,
-        queryText: keyword,
-        conditionBucket: next.conditionBucket as ConditionBucket,
-        cacheKey: next.cacheKey,
-      });
+      const { scraped, keyword } = isRawBucket
+        ? await (async () => {
+            const tiered = await scrapeTieredRawSoldSnapshot({
+              card,
+              conditionBucket: next.conditionBucket as ConditionBucket,
+              mergedCacheKey: next.cacheKey,
+              requestedByUserId: next.requestedByUserId,
+            });
+            return { scraped: tiered.merged, keyword: tiered.ebaySearchKeyword };
+          })()
+        : await (async () => {
+            const kw = buildEbaySoldSearchKeyword({
+              name: card.name,
+              setName: card.setName,
+              cardNumber: card.cardNumber,
+              conditionBucket: next.conditionBucket as ConditionBucket,
+            });
+            const snap = await scrapeCardMarketData({
+              normalizedCardIdentifier: card.normalizedCardKey,
+              queryText: kw,
+              conditionBucket: next.conditionBucket as ConditionBucket,
+              cacheKey: next.cacheKey,
+            });
+            return { scraped: snap, keyword: kw };
+          })();
 
       const listings = scraped.soldListings.slice(0, 5);
       const n = listings.length;

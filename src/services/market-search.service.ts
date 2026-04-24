@@ -24,6 +24,10 @@ import {
   recordCardSearchEvent,
 } from "@/services/card-search-activity.service";
 import { resolveEbaySoldSearchKeywordForDisplay } from "@/lib/search/sold-search-query";
+import {
+  soldSampleStrengthFromUsableCount,
+  type SoldSampleStrength,
+} from "@/lib/pricing/sold-sample-strength";
 
 export type MarketSearchResult =
   | {
@@ -45,6 +49,10 @@ export type MarketSearchResult =
         lowPrice: number;
         highPrice: number;
         listingsCount: number;
+        usableCompCount: number;
+        soldSampleStrength: SoldSampleStrength;
+        limitedSampleNote?: string | null;
+        showCollectorConditionRefinementHint?: boolean;
         lastUpdated: Date;
         isStale: boolean;
         /** True while cache is stale and a sold scrape is queued or in-flight (drives polling / worker kick). */
@@ -530,6 +538,15 @@ export async function searchCardMarketData(input: {
         })
       : null;
 
+  const usableCompCount = existing.listingsCount;
+  const soldSampleStrength = soldSampleStrengthFromUsableCount(usableCompCount);
+  const limitedSampleNote =
+    usableCompCount >= 1 && usableCompCount <= 2
+      ? "Limited matching sales found. Estimate may be less reliable."
+      : null;
+  const showCollectorConditionRefinementHint =
+    tier === "collector" && soldSampleStrength === "limited" && usableCompCount >= 1;
+
   return {
     kind: "ok",
     data: {
@@ -549,6 +566,10 @@ export async function searchCardMarketData(input: {
       lowPrice: Number(existing.lowPrice),
       highPrice: Number(existing.highPrice),
       listingsCount: existing.listingsCount,
+      usableCompCount,
+      soldSampleStrength,
+      limitedSampleNote,
+      showCollectorConditionRefinementHint,
       lastUpdated: existing.lastScrapedAt,
       isStale: isStaleFinal,
       isRefreshing: isRefreshingFinal,

@@ -5,12 +5,19 @@ import { runEbaySoldListingsActor } from "@/services/apify/ebay-sold-listings.ac
  * Production Apify path: caffein.dev/ebay-sold-listings (see `APIFY_EBAY_SOLD_ACTOR_ID`).
  */
 export const apifyScrapingProvider: ScrapingProvider = {
-  async scrapeSoldSnapshot({ normalizedCardIdentifier, queryText, cacheKey, conditionBucket }): Promise<ScrapedCardSnapshot> {
+  async scrapeSoldSnapshot({
+    normalizedCardIdentifier,
+    queryText,
+    cacheKey,
+    conditionBucket,
+    listingMappingMode,
+  }): Promise<ScrapedCardSnapshot> {
     return runEbaySoldListingsActor({
       keyword: queryText,
       normalizedCardIdentifier,
       cacheKey,
       conditionBucket,
+      listingMappingMode,
     });
   },
 };

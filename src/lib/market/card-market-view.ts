@@ -1,5 +1,6 @@
 import type { ConditionBucket } from "@prisma/client";
 import type { MarketSnapshotInsights } from "@/lib/pricing/market-snapshot-insights";
+import type { SoldSampleStrength } from "@/lib/pricing/sold-sample-strength";
 
 export type CardMarketView = {
   card: {
@@ -19,6 +20,13 @@ export type CardMarketView = {
   lowPrice: number;
   highPrice: number;
   listingsCount: number;
+  /** Sold comps that matched the selected condition bucket in this snapshot (same as displayed comps when visible). */
+  usableCompCount: number;
+  soldSampleStrength: SoldSampleStrength;
+  /** When the matching-sales sample is very thin. */
+  limitedSampleNote?: string | null;
+  /** Collector-only: subtle note when the matching-sales sample is thin (narrow search may apply when available). */
+  showCollectorConditionRefinementHint?: boolean;
   lastUpdated: Date;
   isStale: boolean;
   /**

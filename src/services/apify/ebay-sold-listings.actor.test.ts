@@ -68,6 +68,20 @@ describe("mapApifyEbaySoldItemsToListings", () => {
     expect(out.length).toBe(1);
   });
 
+  it("broad_raw_lane keeps LP-titled rows that strict raw_nm would exclude", () => {
+    const row = {
+      title: "Pokemon Card lightly played LP",
+      soldPrice: 50,
+      endedAt: new Date(Date.UTC(2024, 0, 11)).toISOString(),
+      url: "https://www.ebay.com/itm/100000000002",
+      itemId: "100000000002",
+    };
+    const strict = mapApifyEbaySoldItemsToListings([row], "test", "raw_nm", "strict_bucket");
+    const broad = mapApifyEbaySoldItemsToListings([row], "test", "raw_nm", "broad_raw_lane");
+    expect(strict.length).toBe(0);
+    expect(broad.length).toBe(1);
+  });
+
   it("does not filter by condition bucket on raw_nm", () => {
     const out = mapApifyEbaySoldItemsToListings(
       [

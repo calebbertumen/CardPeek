@@ -1,6 +1,11 @@
 import type { ConditionBucket } from "@prisma/client";
-import { soldListingTitleMatchesBucket } from "@/lib/search/ebay-sold-filters";
-import type { ScrapedCardSnapshot, ScrapedSoldListing, SoldListingCandidate } from "@/lib/scraping/types";
+import { isLikelyGradedListingTitle, soldListingTitleMatchesBucket } from "@/lib/search/ebay-sold-filters";
+import type {
+  ScrapedCardSnapshot,
+  ScrapedSoldListing,
+  SoldListingCandidate,
+  SoldListingMappingMode,
+} from "@/lib/scraping/types";
 import {
   canonicalEbayItemUrl,
   isEbaySearchOrBrowseUrl,
@@ -53,6 +58,9 @@ export const CANDIDATE_FETCH_COUNT = 8;
 
 /** Max listings returned after validation (subset of candidates; no backfill below this cap). */
 export const MAX_VALID_SOLD_LISTINGS = 5;
+
+/** Broad raw lane keeps more rows before condition bucketing downstream. */
+export const MAX_BROAD_RAW_LANE_LISTINGS = 8;
 
 function maxValidSoldListings(): number {
   return MAX_VALID_SOLD_LISTINGS;
@@ -333,6 +341,7 @@ export function mapApifyEbaySoldItemsToListings(
   items: ApifyItem[],
   keyword: string,
   conditionBucket: ConditionBucket,
+  mappingMode: SoldListingMappingMode = "strict_bucket",
 ): ScrapedSoldListing[] {
   const storeRaw = storeRawPayload();
   const parsed: MappedRow[] = items
@@ -385,9 +394,12 @@ export function mapApifyEbaySoldItemsToListings(
       };
     })
     .filter((row) => isValidSoldListing(mappedRowToListingForValidation(row)))
-    .filter((row) =>
-      soldListingTitleMatchesBucket(row.title, conditionBucket, row.conditionLabel ?? null),
-    );
+    .filter((row) => {
+      if (mappingMode === "broad_raw_lane") {
+        return !isLikelyGradedListingTitle(`${row.title ?? ""} ${row.conditionLabel ?? ""}`.trim());
+      }
+      return soldListingTitleMatchesBucket(row.title, conditionBucket, row.conditionLabel ?? null);
+    });
 
   const sorted = [...parsed].sort((a, b) => b.soldAt.getTime() - a.soldAt.getTime());
 
@@ -498,6 +510,7 @@ export type RunEbaySoldListingsInput = {
   normalizedCardIdentifier: string;
   conditionBucket: ConditionBucket;
   cacheKey?: string;
+  listingMappingMode?: SoldListingMappingMode;
 };
 
 /**
@@ -506,6 +519,7 @@ export type RunEbaySoldListingsInput = {
  */
 export async function runEbaySoldListingsActor(input: RunEbaySoldListingsInput): Promise<ScrapedCardSnapshot> {
   const actorId = getEbaySoldListingsActorId();
+  const mappingMode = input.listingMappingMode ?? "strict_bucket";
   const started = Date.now();
 
   logSoldScrapeMetric({
@@ -547,9 +561,15 @@ export async function runEbaySoldListingsActor(input: RunEbaySoldListingsInput):
 
   const items = await fetchEbaySoldListingsDataset(actorId, input.keyword, CANDIDATE_FETCH_COUNT, waitSec);
   lastItems = items;
-  const mapped = mapApifyEbaySoldItemsToListings(items, input.keyword, input.conditionBucket);
+  const mapped = mapApifyEbaySoldItemsToListings(
+    items,
+    input.keyword,
+    input.conditionBucket,
+    mappingMode,
+  );
 
-  soldListings = mapped.sort((a, b) => b.soldAt.getTime() - a.soldAt.getTime()).slice(0, maxValidSoldListings());
+  const postMapCap = mappingMode === "broad_raw_lane" ? MAX_BROAD_RAW_LANE_LISTINGS : maxValidSoldListings();
+  soldListings = mapped.sort((a, b) => b.soldAt.getTime() - a.soldAt.getTime()).slice(0, postMapCap);
 
   if (process.env.NODE_ENV === "development") {
     // eslint-disable-next-line no-console
