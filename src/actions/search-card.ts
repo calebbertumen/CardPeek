@@ -16,6 +16,7 @@ import { searchCardMarketData } from "@/services/market-search.service";
 import { enforceAndRecordDailySearch } from "@/services/search-usage.service";
 import { enforceAndRecordPreviewSearch } from "@/services/preview-usage.service";
 import { releaseOrphanedStarterReservation } from "@/services/fresh-scrape-usage.service";
+import { processPendingScrapeJobs } from "@/services/scrape-worker.service";
 import type { ConditionBucket } from "@prisma/client";
 
 type MarketSearchOk = Extract<Awaited<ReturnType<typeof searchCardMarketData>>, { kind: "ok" }>;
@@ -118,6 +119,16 @@ export async function searchCardAction(
     });
 
     if (result.kind === "no_data") {
+      /**
+       * Start work immediately when we just queued (or detected) a refresh.
+       * This reduces "search submitted" → "scrape actually starts" latency vs waiting on client effects / cron.
+       * Best-effort: never block returning NO_DATA.
+       */
+      if (tier !== "preview" && result.isRefreshing) {
+        void processPendingScrapeJobs({ limit: 1 }).catch(() => {
+          // best-effort
+        });
+      }
       if (result.blockedReason === "FREE_LIFETIME_SCRAPE_LIMIT") {
         return {
           ok: false,
