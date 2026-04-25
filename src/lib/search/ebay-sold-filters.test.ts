@@ -4,6 +4,7 @@ import {
   listingItemIdFromActorFields,
   normalizeEbayItemId,
   soldListingTitleMatchesBucket,
+  titleLooksLikeMysteryOrGrabBagListing,
 } from "@/lib/search/ebay-sold-filters";
 
 describe("isLikelyGradedListingTitle", () => {
@@ -60,6 +61,40 @@ describe("soldListingTitleMatchesBucket", () => {
 
   it("psa_10 rejects a different PSA grade in title", () => {
     expect(soldListingTitleMatchesBucket("Charizard PSA 9 NM", "psa_10", null)).toBe(false);
+  });
+
+  it("raw_mp_hp rejects generic NM-style titles with no played wear signal", () => {
+    expect(
+      soldListingTitleMatchesBucket(
+        "Pokémon TCG Umbreon EX Prismatic Evolutions Card 161/131 SIR",
+        "raw_mp_hp",
+      ),
+    ).toBe(false);
+    expect(soldListingTitleMatchesBucket("Umbreon ex 161/131 Sv: Prismatic Evolutions Holo", "raw_mp_hp")).toBe(
+      false,
+    );
+  });
+
+  it("raw_mp_hp accepts explicit MP/HP/DMG or clear wear wording", () => {
+    expect(soldListingTitleMatchesBucket("Umbreon ex 161 MP moderate play", "raw_mp_hp")).toBe(true);
+    expect(soldListingTitleMatchesBucket("Umbreon ex heavily played HP", "raw_mp_hp")).toBe(true);
+    expect(soldListingTitleMatchesBucket("Umbreon ex DMG crease", "raw_mp_hp")).toBe(true);
+    expect(soldListingTitleMatchesBucket("Umbreon ex — well played", "raw_mp_hp")).toBe(true);
+    expect(soldListingTitleMatchesBucket("Umbreon ex edge wear", "raw_mp_hp")).toBe(true);
+  });
+
+  it("raw_mp_hp rejects mystery grab and similar non-single sales", () => {
+    expect(
+      soldListingTitleMatchesBucket(
+        "Mystery Grab Prismatic Evolutions Umbreon EX Card 161/131 SIR (READ DESCRIPTION)",
+        "raw_mp_hp",
+      ),
+    ).toBe(false);
+  });
+
+  it("titleLooksLikeMysteryOrGrabBagListing detects common patterns", () => {
+    expect(titleLooksLikeMysteryOrGrabBagListing("Mystery box 10 packs")).toBe(true);
+    expect(titleLooksLikeMysteryOrGrabBagListing("Umbreon ex NM holo")).toBe(false);
   });
 
   it("psa_10 rejects CGC and non-10 PSA grades", () => {

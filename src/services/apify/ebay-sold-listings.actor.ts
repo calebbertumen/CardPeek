@@ -1,5 +1,9 @@
 import type { ConditionBucket } from "@prisma/client";
-import { isLikelyGradedListingTitle, soldListingTitleMatchesBucket } from "@/lib/search/ebay-sold-filters";
+import {
+  isLikelyGradedListingTitle,
+  soldListingTitleMatchesBucket,
+  titleLooksLikeMysteryOrGrabBagListing,
+} from "@/lib/search/ebay-sold-filters";
 import type {
   ScrapedCardSnapshot,
   ScrapedSoldListing,
@@ -306,6 +310,7 @@ function titleLooksLikeAccessoryOrPackaging(title: string): boolean {
 export function isValidSoldListing(listing: SoldListingCandidate): boolean {
   if (!Number.isFinite(listing.soldPrice) || listing.soldPrice <= 0) return false;
   if (titleLooksLikeAccessoryOrPackaging(listing.title)) return false;
+  if (titleLooksLikeMysteryOrGrabBagListing(listing.title)) return false;
   return true;
 }
 

@@ -1,5 +1,17 @@
 import type { ConditionBucket } from "@prisma/client";
 
+/**
+ * Mystery boxes, grab bags, and similar listings are not comparable single-card sold comps.
+ */
+export function titleLooksLikeMysteryOrGrabBagListing(text: string): boolean {
+  const t = (text ?? "").toLowerCase();
+  if (/\bmystery\b/.test(t) && /\b(grab|box|pack|bundle|lot|random)\b/.test(t)) return true;
+  if (/\bgrab\s*bag\b/i.test(t)) return true;
+  if (/\bmystery\s+grab\b/i.test(t)) return true;
+  if (/\bread\s+description\b/i.test(t) && /\b(mystery|grab|random)\b/i.test(t)) return true;
+  return false;
+}
+
 /** Third-party slab / grading services we exclude from raw bucket results. */
 export function isLikelyGradedListingTitle(title: string): boolean {
   const t = title;
@@ -45,7 +57,8 @@ function rawConditionSignals(combined: string): {
     /\bpoor\b/i.test(t) ||
     /\bcreases?\b/i.test(t) ||
     /\bwater\s*damage\b/i.test(t) ||
-    /\btear(?:s|ed)?\b/i.test(t);
+    /\btear(?:s|ed)?\b/i.test(t) ||
+    /\b(whitening|white\s*edges?|edgewear|edge\s*wear)\b/i.test(t);
   return { nm, lp, mp, hp, dmg };
 }
 
@@ -63,9 +76,14 @@ function rawListingMatchesBucket(combined: string, bucket: ConditionBucket): boo
     return true;
   }
   if (bucket === "raw_mp_hp") {
-    // Reject explicit NM/LP; keep MP/HP/DMG and "no explicit condition" results.
+    // Reject explicit NM/LP. Do **not** treat "no condition in title" as MP/HP — that lets NM-market
+    // listings through (sellers rarely put played condition on high-end singles).
     if (s.nm || s.lp) return false;
-    return true;
+    if (s.mp || s.hp || s.dmg) return true;
+    const t = combined;
+    if (/\bwell\s*played\b/i.test(t)) return true;
+    if (/\b(heavy|moderate)\s+wear\b/i.test(t)) return true;
+    return false;
   }
   return true;
 }
@@ -129,6 +147,7 @@ export function soldListingTitleMatchesBucket(
   const combined = `${title ?? ""} ${conditionLabel ?? ""}`.trim();
   if (bucket.startsWith("raw_")) {
     if (isLikelyGradedListingTitle(combined)) return false;
+    if (titleLooksLikeMysteryOrGrabBagListing(combined)) return false;
     return rawListingMatchesBucket(combined, bucket);
   }
   if (bucket === "psa_10") {
