@@ -12,7 +12,8 @@ import { ClearInputButton } from "@/components/ui/clear-input-button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-const DEBOUNCE_MS = 300;
+const DEBOUNCE_MS_SHORT = 90;
+const DEBOUNCE_MS_LONG = 150;
 const MAX_SUGGESTIONS = 5;
 
 type CardNameComboboxProps = {
@@ -49,6 +50,9 @@ export function CardNameCombobox({
   const listRef = useRef<HTMLUListElement>(null);
   const listId = `${id}-name-listbox`;
   const fetchSeq = useRef(0);
+  const cacheRef = useRef<Map<string, string[]>>(new Map());
+  const lastSuccessfulQueryRef = useRef<string>("");
+  const lastSuccessfulResultsRef = useRef<string[]>([]);
 
   useEffect(() => {
     setValue(defaultValue);
@@ -56,7 +60,9 @@ export function CardNameCombobox({
   }, [defaultValue]);
 
   useEffect(() => {
-    const t = setTimeout(() => setDebounced(value), DEBOUNCE_MS);
+    const q = value.trim();
+    const ms = q.length <= 2 ? DEBOUNCE_MS_SHORT : DEBOUNCE_MS_LONG;
+    const t = setTimeout(() => setDebounced(value), ms);
     return () => clearTimeout(t);
   }, [value]);
 
@@ -68,19 +74,37 @@ export function CardNameCombobox({
       return;
     }
 
+    // Instant UI: show cached results (or a filtered prefix view of the last successful fetch) immediately.
+    const cached = cacheRef.current.get(q.toLowerCase());
+    if (cached) {
+      setSuggestions(cached.slice(0, MAX_SUGGESTIONS));
+    } else if (
+      lastSuccessfulQueryRef.current &&
+      q.toLowerCase().startsWith(lastSuccessfulQueryRef.current.toLowerCase()) &&
+      lastSuccessfulResultsRef.current.length > 0
+    ) {
+      const filtered = lastSuccessfulResultsRef.current
+        .filter((n) => n.toLowerCase().includes(q.toLowerCase()))
+        .slice(0, MAX_SUGGESTIONS);
+      if (filtered.length > 0) setSuggestions(filtered);
+    }
+
     const seq = ++fetchSeq.current;
     const ac = new AbortController();
 
-    setLoading(true);
+    // Only show spinner when we don't already have something to show.
+    if (!cached) setLoading(true);
     void fetch(`/api/tcg-card-names?q=${encodeURIComponent(q)}`, {
       signal: ac.signal,
-      cache: "no-store",
     })
       .then((r) => (r.ok ? r.json() : Promise.resolve({ names: [] })))
       .then((d: { names?: string[] }) => {
         if (seq !== fetchSeq.current) return;
         const names = Array.isArray(d.names) ? d.names.slice(0, MAX_SUGGESTIONS) : [];
         setSuggestions(names);
+        cacheRef.current.set(q.toLowerCase(), names);
+        lastSuccessfulQueryRef.current = q;
+        lastSuccessfulResultsRef.current = names;
       })
       .catch(() => {
         if (seq !== fetchSeq.current) return;
