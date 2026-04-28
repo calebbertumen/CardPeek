@@ -68,7 +68,7 @@ export function CardNameCombobox({
 
   useEffect(() => {
     const q = debounced.trim();
-    if (q.length < 1) {
+    if (q.length < 2) {
       setSuggestions([]);
       setLoading(false);
       return;
@@ -89,11 +89,16 @@ export function CardNameCombobox({
       if (filtered.length > 0) setSuggestions(filtered);
     }
 
+    // If we already have a cached answer for this exact query, don't refetch.
+    if (cached) {
+      setLoading(false);
+      return;
+    }
+
     const seq = ++fetchSeq.current;
     const ac = new AbortController();
 
-    // Only show spinner when we don't already have something to show.
-    if (!cached) setLoading(true);
+    setLoading(true);
     void fetch(`/api/tcg-card-names?q=${encodeURIComponent(q)}`, {
       signal: ac.signal,
     })

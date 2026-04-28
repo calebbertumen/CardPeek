@@ -7,7 +7,8 @@ import { fetchPokemonCardNameSuggestions } from "@/services/pokemon-tcg/pokemon-
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q")?.trim() ?? "";
-  if (q.length < 1) {
+  // 1-char queries are too broad and slow upstream; start at 2 chars.
+  if (q.length < 2) {
     return NextResponse.json(
       { names: [] },
       {
