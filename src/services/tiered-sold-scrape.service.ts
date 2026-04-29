@@ -207,7 +207,7 @@ export async function scrapeTieredRawSoldSnapshot(input: {
   mergedCacheKey: string;
   requestedByUserId: string | null;
 }): Promise<{ merged: ScrapedCardSnapshot; ebaySearchKeyword: string }> {
-  const { card, conditionBucket, mergedCacheKey, requestedByUserId } = input;
+  const { card, conditionBucket, requestedByUserId } = input;
   const broadCacheKey = buildSoldBroadRawCacheKey(card.normalizedCardKey);
   const stats = await getCardSearchStats(card.normalizedCardKey);
   const ttlMs = cachePolicyTtlMs(getCardCachePolicy(stats));
