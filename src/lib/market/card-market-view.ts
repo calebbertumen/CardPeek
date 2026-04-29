@@ -25,8 +25,6 @@ export type CardMarketView = {
   soldSampleStrength: SoldSampleStrength;
   /** When the matching-sales sample is very thin. */
   limitedSampleNote?: string | null;
-  /** Collector-only: subtle note when the matching-sales sample is thin (narrow search may apply when available). */
-  showCollectorConditionRefinementHint?: boolean;
   lastUpdated: Date;
   isStale: boolean;
   /**

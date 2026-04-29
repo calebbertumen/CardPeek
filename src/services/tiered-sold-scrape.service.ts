@@ -1,9 +1,10 @@
 import type { ConditionBucket } from "@prisma/client";
 import { Prisma } from "@prisma/client";
-import { buildSoldBroadRawCacheKey } from "@/lib/normalize";
+import { buildSoldBroadRawCacheKey, buildSoldConditionFallbackRawCacheKey } from "@/lib/normalize";
 import {
   buildBroadRawEbaySoldSearchKeyword,
   buildConditionFallbackEbaySoldSearchKeyword,
+  buildRawMpHpFallbackEbaySearchKeywords,
 } from "@/lib/search/sold-search-query";
 import { mergeDedupeSoldListings } from "@/lib/search/merge-sold-listings";
 import { soldListingTitleMatchesBucket } from "@/lib/search/ebay-sold-filters";
@@ -61,6 +62,20 @@ function snapshotFromListings(
     maxPrice: Math.round(maxPrice * 100) / 100,
     scrapedAt: new Date(),
   };
+}
+
+const USABLE_COMPS_BEFORE_FALLBACK = 3;
+const MAX_COMPS_RETURNED = 5;
+
+function mergeBroadAndNarrowThenFilter(
+  broadMatches: ScrapedSoldListing[],
+  narrowPool: ScrapedSoldListing[],
+  conditionBucket: ConditionBucket,
+): ScrapedSoldListing[] {
+  const merged = mergeDedupeSoldListings(broadMatches, narrowPool, 200)
+    .filter((l) => soldListingTitleMatchesBucket(l.title, conditionBucket, l.conditionLabel ?? null))
+    .sort((a, b) => b.soldAt.getTime() - a.soldAt.getTime());
+  return merged.slice(0, MAX_COMPS_RETURNED);
 }
 
 async function loadScrapedListingsFromCardCacheRow(cardCacheId: string): Promise<ScrapedSoldListing[]> {
@@ -174,8 +189,11 @@ async function upsertSoldCardCacheTx(
 }
 
 /**
- * Collector tiered raw-lane sold scrape: shared broad snapshot + optional narrow fallback, merged into the
- * per-condition merged cache key (`mergedCacheKey`).
+ * Tiered raw-lane sold scrape: shared broad snapshot (no condition tokens), then optional condition-specific
+ * fallback Apify runs when the selected bucket has fewer than {@link USABLE_COMPS_BEFORE_FALLBACK} usable comps.
+ * Fallback is Collector-only; results are still reclassified with {@link soldListingTitleMatchesBucket}.
+ * Per-query fallback rows are cached under {@link buildSoldConditionFallbackRawCacheKey}; merged comps are written
+ * to `mergedCacheKey` by the scrape worker.
  */
 export async function scrapeTieredRawSoldSnapshot(input: {
   card: {
@@ -247,25 +265,74 @@ export async function scrapeTieredRawSoldSnapshot(input: {
   );
 
   const displayEbayKeyword = broadKeyword;
-  let mergedListings = [...bucketMatches].sort((a, b) => b.soldAt.getTime() - a.soldAt.getTime()).slice(0, 5);
+  let mergedListings = [...bucketMatches].sort((a, b) => b.soldAt.getTime() - a.soldAt.getTime()).slice(0, MAX_COMPS_RETURNED);
 
-  if (bucketMatches.length < 3 && collector) {
-    const narrowKw = buildConditionFallbackEbaySoldSearchKeyword({
-      name: card.name,
-      setName: card.setName,
-      cardNumber: card.cardNumber,
-      conditionBucket,
-    });
-    if (narrowKw) {
-      const narrowScraped = await scrapeCardMarketData({
-        normalizedCardIdentifier: card.normalizedCardKey,
-        queryText: narrowKw,
-        conditionBucket,
-        cacheKey: mergedCacheKey,
+  if (bucketMatches.length < USABLE_COMPS_BEFORE_FALLBACK && collector) {
+    const loadFreshFallbackListingsOrMiss = async (fallbackCacheKey: string): Promise<ScrapedSoldListing[] | "miss"> => {
+      const row = await prisma.cardCache.findUnique({
+        where: { cacheKey: fallbackCacheKey },
+        select: { id: true, lastScrapedAt: true },
       });
-      mergedListings = mergeDedupeSoldListings(bucketMatches, narrowScraped.soldListings, 5).filter((l) =>
-        soldListingTitleMatchesBucket(l.title, conditionBucket, l.conditionLabel ?? null),
-      );
+      if (!row || !isSoldCacheFresh(row.lastScrapedAt, now, ttlMs)) return "miss";
+      return loadScrapedListingsFromCardCacheRow(row.id);
+    };
+
+    let narrowAccum: ScrapedSoldListing[] = [];
+
+    const runOneFallbackQuery = async (narrowKw: string, fallbackCacheKey: string): Promise<void> => {
+      const cached = await loadFreshFallbackListingsOrMiss(fallbackCacheKey);
+      let narrowListings: ScrapedSoldListing[];
+      if (cached !== "miss") {
+        narrowListings = cached;
+      } else {
+        const narrowScraped = await scrapeCardMarketData({
+          normalizedCardIdentifier: card.normalizedCardKey,
+          queryText: narrowKw,
+          conditionBucket,
+          cacheKey: fallbackCacheKey,
+          listingMappingMode: "broad_raw_lane",
+        });
+        narrowListings = narrowScraped.soldListings;
+        await prisma.$transaction(async (tx) => {
+          await upsertSoldCardCacheTx(tx, {
+            cardId: card.id,
+            cardVariantId: null,
+            cacheKey: fallbackCacheKey,
+            conditionBucket,
+            ebaySearchKeyword: narrowKw,
+            listings: narrowListings,
+            scrapedAt: narrowScraped.scrapedAt,
+          });
+        });
+      }
+      narrowAccum = mergeDedupeSoldListings(narrowAccum, narrowListings, 200);
+    };
+
+    if (conditionBucket === "raw_mp_hp") {
+      const queries = buildRawMpHpFallbackEbaySearchKeywords({
+        name: card.name,
+        setName: card.setName,
+        cardNumber: card.cardNumber,
+      });
+      for (let i = 0; i < queries.length; i += 1) {
+        const narrowKw = queries[i]!;
+        const fallbackKey = buildSoldConditionFallbackRawCacheKey(card.normalizedCardKey, conditionBucket, i);
+        await runOneFallbackQuery(narrowKw, fallbackKey);
+        mergedListings = mergeBroadAndNarrowThenFilter(bucketMatches, narrowAccum, conditionBucket);
+        if (mergedListings.length >= USABLE_COMPS_BEFORE_FALLBACK) break;
+      }
+    } else {
+      const narrowKw = buildConditionFallbackEbaySoldSearchKeyword({
+        name: card.name,
+        setName: card.setName,
+        cardNumber: card.cardNumber,
+        conditionBucket,
+      });
+      if (narrowKw) {
+        const fallbackKey = buildSoldConditionFallbackRawCacheKey(card.normalizedCardKey, conditionBucket);
+        await runOneFallbackQuery(narrowKw, fallbackKey);
+        mergedListings = mergeBroadAndNarrowThenFilter(bucketMatches, narrowAccum, conditionBucket);
+      }
     }
   }
 

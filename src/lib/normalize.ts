@@ -62,6 +62,21 @@ export function buildSoldBroadRawCacheKey(normalizedCardKey: string): string {
   return `${normalizedCardKey}__broad_raw`;
 }
 
+/**
+ * Cached Apify result for a condition-specific raw sold fallback (Collector, when broad+filter is thin).
+ * For `raw_mp_hp`, pass `mpHpFallbackQueryIndex` 0..2 for MP / HP / DMG query variants.
+ */
+export function buildSoldConditionFallbackRawCacheKey(
+  normalizedCardKey: string,
+  conditionBucket: ConditionBucket,
+  mpHpFallbackQueryIndex?: number,
+): string {
+  if (conditionBucket === "raw_mp_hp" && mpHpFallbackQueryIndex !== undefined) {
+    return `${normalizedCardKey}__cond_fallback_raw_mp_hp_${mpHpFallbackQueryIndex}`;
+  }
+  return `${normalizedCardKey}__cond_fallback_${conditionBucket}`;
+}
+
 export function normalizeConditionBucket(raw: string): ConditionBucket {
   const underscored = raw.trim().toLowerCase().replace(/[\s-]+/g, "_");
   if (VALID.includes(underscored as ConditionBucket)) {

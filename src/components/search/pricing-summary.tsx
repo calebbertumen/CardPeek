@@ -63,7 +63,11 @@ export function PricingSummary({ data, tier }: Props) {
       <CardContent className="space-y-5 px-3 pb-3 pt-3 sm:space-y-6 sm:px-4 sm:pb-4 sm:pt-4">
         {data.listingsCount === 0 ? (
           <div>
-            <p className="text-sm font-medium text-foreground">No sold listings in this snapshot</p>
+            <p className="text-sm font-medium text-foreground">
+              {data.conditionBucket.startsWith("raw_")
+                ? "No matching sold listings found for this condition."
+                : "No sold listings in this snapshot"}
+            </p>
             <p className="mt-2 text-sm text-muted-foreground">
               Try another set or condition, or check back later.
             </p>
@@ -223,11 +227,6 @@ export function PricingSummary({ data, tier }: Props) {
 
             {data.limitedSampleNote ? (
               <p className="text-[10px] leading-snug text-muted-foreground">{data.limitedSampleNote}</p>
-            ) : null}
-            {data.showCollectorConditionRefinementHint ? (
-              <p className="text-[10px] leading-snug text-muted-foreground">
-                Access more specific comps when available.
-              </p>
             ) : null}
 
             {/* 5 Condition + updated */}

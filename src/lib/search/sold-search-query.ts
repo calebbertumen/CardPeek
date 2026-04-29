@@ -32,6 +32,7 @@ export function buildConditionFallbackEbaySoldSearchKeyword(input: {
   conditionBucket: ConditionBucket;
 }): string | null {
   if (!input.conditionBucket.startsWith("raw_")) return null;
+  if (input.conditionBucket === "raw_mp_hp") return null;
 
   const base = buildBroadRawEbaySoldSearchKeyword({
     name: input.name,
@@ -39,16 +40,35 @@ export function buildConditionFallbackEbaySoldSearchKeyword(input: {
     cardNumber: input.cardNumber,
   });
 
-  const terms: Record<"raw_nm" | "raw_lp" | "raw_mp_hp", string> = {
-    raw_nm: `near mint NM`,
-    raw_lp: `lightly played LP`,
-    raw_mp_hp: `moderately played MP heavily played HP damaged DMG`,
+  const tailByBucket: Record<"raw_nm" | "raw_lp", string> = {
+    raw_nm: `"near mint" NM`,
+    raw_lp: `"lightly played" LP`,
   };
 
-  const tail = terms[input.conditionBucket as keyof typeof terms];
+  const tail = tailByBucket[input.conditionBucket as keyof typeof tailByBucket];
   if (!tail) return null;
 
   return `${base} ${tail}`.replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Sequential narrow queries for the combined MP/HP/DMG bucket (one Apify run each, only until enough comps).
+ */
+export function buildRawMpHpFallbackEbaySearchKeywords(input: {
+  name: string;
+  setName?: string | null;
+  cardNumber?: string | null;
+}): string[] {
+  const base = buildBroadRawEbaySoldSearchKeyword({
+    name: input.name,
+    setName: input.setName,
+    cardNumber: input.cardNumber,
+  });
+  return [
+    `${base} "moderately played" MP`.replace(/\s+/g, " ").trim(),
+    `${base} "heavily played" HP`.replace(/\s+/g, " ").trim(),
+    `${base} damaged DMG`.replace(/\s+/g, " ").trim(),
+  ];
 }
 
 export function buildEbaySoldSearchKeyword(input: {

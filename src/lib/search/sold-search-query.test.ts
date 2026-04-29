@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { buildSoldConditionFallbackRawCacheKey } from "@/lib/normalize";
 import {
   buildBroadRawEbaySoldSearchKeyword,
   buildConditionFallbackEbaySoldSearchKeyword,
   buildEbaySoldListingsSearchUrl,
   buildEbaySoldSearchKeyword,
+  buildRawMpHpFallbackEbaySearchKeywords,
   normalizeSoldSearchKeywordForDedupe,
   resolveEbaySoldSearchKeywordForDisplay,
 } from "@/lib/search/sold-search-query";
@@ -35,15 +37,55 @@ describe("buildConditionFallbackEbaySoldSearchKeyword", () => {
     ).toBeNull();
   });
 
-  it("appends raw condition hints for raw_nm", () => {
+  it("appends quoted near mint hints for raw_nm", () => {
     const q = buildConditionFallbackEbaySoldSearchKeyword({
       name: "Pikachu",
       setName: "Base",
       cardNumber: "25",
       conditionBucket: "raw_nm",
     })!;
-    expect(q.toLowerCase()).toContain("near mint");
+    expect(q).toContain('"near mint"');
+    expect(q).toContain(" NM");
     expect(q).toContain("-PSA");
+  });
+
+  it("returns null for raw_mp_hp (uses sequential keyword helper instead)", () => {
+    expect(
+      buildConditionFallbackEbaySoldSearchKeyword({
+        name: "X",
+        setName: null,
+        cardNumber: "1",
+        conditionBucket: "raw_mp_hp",
+      }),
+    ).toBeNull();
+  });
+});
+
+describe("buildRawMpHpFallbackEbaySearchKeywords", () => {
+  it("returns three distinct queries with slab exclusions on each", () => {
+    const qs = buildRawMpHpFallbackEbaySearchKeywords({
+      name: "Eevee",
+      setName: "SV",
+      cardNumber: "12",
+    });
+    expect(qs).toHaveLength(3);
+    expect(qs[0]).toContain('"moderately played"');
+    expect(qs[0]).toContain(" MP");
+    expect(qs[1]).toContain('"heavily played"');
+    expect(qs[1]).toContain(" HP");
+    expect(qs[2]).toMatch(/damaged/i);
+    expect(qs[2]).toContain("DMG");
+    for (const q of qs) {
+      expect(q).toContain("-PSA");
+      expect(q).toContain("Eevee");
+    }
+  });
+});
+
+describe("buildSoldConditionFallbackRawCacheKey", () => {
+  it("suffixes mp/hp variant index", () => {
+    expect(buildSoldConditionFallbackRawCacheKey("k", "raw_lp")).toBe("k__cond_fallback_raw_lp");
+    expect(buildSoldConditionFallbackRawCacheKey("k", "raw_mp_hp", 1)).toBe("k__cond_fallback_raw_mp_hp_1");
   });
 });
 

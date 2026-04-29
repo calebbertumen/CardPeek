@@ -52,7 +52,6 @@ export type MarketSearchResult =
         usableCompCount: number;
         soldSampleStrength: SoldSampleStrength;
         limitedSampleNote?: string | null;
-        showCollectorConditionRefinementHint?: boolean;
         lastUpdated: Date;
         isStale: boolean;
         /** True while cache is stale and a sold scrape is queued or in-flight (drives polling / worker kick). */
@@ -544,8 +543,6 @@ export async function searchCardMarketData(input: {
     usableCompCount >= 1 && usableCompCount <= 2
       ? "Limited matching sales found. Estimate may be less reliable."
       : null;
-  const showCollectorConditionRefinementHint =
-    tier === "collector" && soldSampleStrength === "limited" && usableCompCount >= 1;
 
   return {
     kind: "ok",
@@ -569,7 +566,6 @@ export async function searchCardMarketData(input: {
       usableCompCount,
       soldSampleStrength,
       limitedSampleNote,
-      showCollectorConditionRefinementHint,
       lastUpdated: existing.lastScrapedAt,
       isStale: isStaleFinal,
       isRefreshing: isRefreshingFinal,
