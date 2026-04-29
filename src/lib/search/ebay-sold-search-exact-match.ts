@@ -27,12 +27,25 @@ export function ebaySoldSearchHtmlIndicatesNoExactMatches(html: string): boolean
   return false;
 }
 
+/** Bound SERP preflight latency so a slow/hung eBay response cannot block the scrape worker for minutes. */
+export function ebaySoldPreflightTimeoutMs(): number {
+  const raw = process.env.EBAY_SOLD_PREFLIGHT_TIMEOUT_MS?.trim();
+  if (!raw) return 12_000;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return 12_000;
+  return Math.min(Math.max(Math.floor(n), 3000), 60_000);
+}
+
 export async function fetchEbaySoldSearchPageHtml(keyword: string): Promise<string | null> {
   const host = resolveEbayWwwHost();
   const url = buildEbaySoldListingsSearchUrl(keyword, host);
+  const ms = ebaySoldPreflightTimeoutMs();
+  const controller = new AbortController();
+  const kill = setTimeout(() => controller.abort(), ms);
   try {
     const res = await fetch(url, {
       cache: "no-store",
+      signal: controller.signal,
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -45,5 +58,7 @@ export async function fetchEbaySoldSearchPageHtml(keyword: string): Promise<stri
     return text.length > 0 ? text : null;
   } catch {
     return null;
+  } finally {
+    clearTimeout(kill);
   }
 }
