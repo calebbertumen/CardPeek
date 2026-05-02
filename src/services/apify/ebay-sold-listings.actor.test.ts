@@ -9,7 +9,7 @@ import {
 } from "@/services/apify/ebay-sold-listings.actor";
 
 describe("mapApifyEbaySoldItemsToListings", () => {
-  it("keeps at most 5 listings sorted by sold date descending", () => {
+  it("keeps at most 8 listings sorted by sold date descending", () => {
     const items = Array.from({ length: 8 }, (_, i) => ({
       title: `Item ${i}`,
       soldPrice: 10 + i,

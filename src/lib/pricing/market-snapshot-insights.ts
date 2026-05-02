@@ -1,7 +1,10 @@
-import {
-  averageExcludesSomeListings,
-  computeDisplayedAveragePrice,
-} from "./compute-displayed-average-price";
+function medianPrice(prices: number[]): number | null {
+  const valid = prices.filter((p) => Number.isFinite(p) && p > 0);
+  if (valid.length === 0) return null;
+  const s = [...valid].sort((a, b) => a - b);
+  const mid = Math.floor(s.length / 2);
+  return s.length % 2 === 0 ? (s[mid - 1]! + s[mid]!) / 2 : s[mid]!;
+}
 
 export type MarketConfidence = "high" | "medium" | "low";
 
@@ -14,7 +17,7 @@ export type MarketSnapshotInsights = {
   sellTarget: number;
   confidence: MarketConfidence;
   trend: MarketTrend | null;
-  /** True when the headline average excluded at least one comp (trim or outlier trim). */
+  /** True when the headline estimate intentionally down-weighted at least one stored comp. */
   headlineUsesCleanedComps: boolean;
   /** Plain-language explanation (no “real-time” / guarantee wording). */
   explainLine: string;
@@ -150,7 +153,7 @@ function daySpanLabel(oldest: Date, newest: Date): string | null {
  */
 export function buildMarketSnapshotInsights(input: {
   listings: Array<{ soldPrice: number; soldDate: Date; position: number }>;
-  /** Raw min/max from the stored snapshot (always the five stored rows). */
+  /** Low / high from the stored snapshot (selected comps). */
   snapshotLow: number;
   snapshotHigh: number;
   priorScrapeAvgPrice: number | null;
@@ -159,14 +162,12 @@ export function buildMarketSnapshotInsights(input: {
   if (rows.length === 0) return null;
 
   const pricesChronological = rows.map((r) => r.soldPrice);
-  const pricing = computeDisplayedAveragePrice(pricesChronological);
-  const displayed = pricing.displayedAveragePrice;
+  const displayed = medianPrice(pricesChronological);
   if (displayed == null) return null;
 
-  const cleaned = pricing.includedPrices.length > 0 ? pricing.includedPrices : pricesChronological;
-  const bands = decisionBands(cleaned);
-  const confidence = confidenceFromCleaned(cleaned, rows.length);
-  const headlineUsesCleanedComps = averageExcludesSomeListings(pricing.pricingMethod);
+  const bands = decisionBands(pricesChronological);
+  const confidence = confidenceFromCleaned(pricesChronological, rows.length);
+  const headlineUsesCleanedComps = true;
 
   const pricesByRecency = [...rows].sort((a, b) => a.position - b.position).map((r) => r.soldPrice);
   const trend = inferTrend({
@@ -184,14 +185,13 @@ export function buildMarketSnapshotInsights(input: {
   const lowShown = input.snapshotLow;
   const highShown = input.snapshotHigh;
 
-  let explainLine = `Based on ${n} recent eBay sold result${n === 1 ? "" : "s"} from ${formatUsdPlain(lowShown)} to ${formatUsdPlain(highShown)}. Uses sold prices, not active listings.`;
+  let explainLine = `Based on ${n} selected recent eBay sold sale${n === 1 ? "" : "s"} from ${formatUsdPlain(lowShown)} to ${formatUsdPlain(highShown)}. Uses sold prices, not active listings.`;
   if (span) {
-    explainLine = `Based on ${n} recent eBay sold result${n === 1 ? "" : "s"} from ${formatUsdPlain(lowShown)} to ${formatUsdPlain(highShown)} over about the last ${span}. Uses sold prices, not active listings.`;
+    explainLine = `Based on ${n} selected recent eBay sold sale${n === 1 ? "" : "s"} from ${formatUsdPlain(lowShown)} to ${formatUsdPlain(highShown)} over about the last ${span}. Uses sold prices, not active listings.`;
   }
 
-  const cleanedNote = headlineUsesCleanedComps
-    ? "Headline value softens obvious outliers so one misleading sale doesn’t skew your read."
-    : undefined;
+  const cleanedNote =
+    "Estimates rank recent sold listings for fit to this card and condition, then use a median headline.";
 
   return {
     ...bands,

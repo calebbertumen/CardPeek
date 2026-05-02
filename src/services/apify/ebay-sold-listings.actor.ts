@@ -7,6 +7,7 @@ import {
 import type {
   ScrapedCardSnapshot,
   ScrapedSoldListing,
+  SoldCompCardContext,
   SoldListingCandidate,
   SoldListingMappingMode,
 } from "@/lib/scraping/types";
@@ -17,7 +18,7 @@ import {
   normalizeEbayItemId,
 } from "@/lib/search/ebay-sold-filters";
 import { logSoldScrapeMetric } from "@/services/apify/scrape-metrics";
-import { computeDisplayedAveragePrice } from "@/lib/pricing/compute-displayed-average-price";
+import { buildScrapedCardSnapshotFromSoldListings } from "@/lib/pricing/sold-comp-selection";
 import {
   ebaySoldSearchHtmlIndicatesNoExactMatches,
   fetchEbaySoldSearchPageHtml,
@@ -60,15 +61,10 @@ function daysToScrape(): number {
  */
 export const CANDIDATE_FETCH_COUNT = 8;
 
-/** Max listings returned after validation (subset of candidates; no backfill below this cap). */
-export const MAX_VALID_SOLD_LISTINGS = 5;
-
-/** Broad raw lane keeps more rows before condition bucketing downstream. */
-export const MAX_BROAD_RAW_LANE_LISTINGS = 8;
-
-function maxValidSoldListings(): number {
-  return MAX_VALID_SOLD_LISTINGS;
-}
+/**
+ * Max mapped sold rows kept after validation (same as candidate fetch count). Downstream pricing selects the best 5.
+ */
+export const MAX_SOLD_LISTINGS_FOR_PRICING_POOL = 8;
 
 function storeRawPayload(): boolean {
   return process.env.SCRAPING_STORE_RAW_PAYLOAD === "true";
@@ -516,11 +512,12 @@ export type RunEbaySoldListingsInput = {
   conditionBucket: ConditionBucket;
   cacheKey?: string;
   listingMappingMode?: SoldListingMappingMode;
+  pricingCardContext?: SoldCompCardContext;
 };
 
 /**
  * Single Apify run: up to **8** sold rows (`CANDIDATE_FETCH_COUNT`). Rows are mapped and deduped; only invalid
- * sold prices are dropped. Returns up to **5** listings (`MAX_VALID_SOLD_LISTINGS`).
+ * sold prices are dropped. Returns up to **8** mapped rows (`MAX_SOLD_LISTINGS_FOR_PRICING_POOL`); pricing selects 5.
  */
 export async function runEbaySoldListingsActor(input: RunEbaySoldListingsInput): Promise<ScrapedCardSnapshot> {
   const actorId = getEbaySoldListingsActorId();
@@ -573,8 +570,9 @@ export async function runEbaySoldListingsActor(input: RunEbaySoldListingsInput):
     mappingMode,
   );
 
-  const postMapCap = mappingMode === "broad_raw_lane" ? MAX_BROAD_RAW_LANE_LISTINGS : maxValidSoldListings();
-  soldListings = mapped.sort((a, b) => b.soldAt.getTime() - a.soldAt.getTime()).slice(0, postMapCap);
+  soldListings = mapped
+    .sort((a, b) => b.soldAt.getTime() - a.soldAt.getTime())
+    .slice(0, MAX_SOLD_LISTINGS_FOR_PRICING_POOL);
 
   if (process.env.NODE_ENV === "development") {
     // eslint-disable-next-line no-console
@@ -618,12 +616,6 @@ export async function runEbaySoldListingsActor(input: RunEbaySoldListingsInput):
     };
   }
 
-  const prices = soldListings.map((l) => l.soldPrice);
-  const minPrice = Math.min(...prices);
-  const maxPrice = Math.max(...prices);
-  const average = computeDisplayedAveragePrice(prices);
-  const medianPrice = computeMedian(prices);
-
   logSoldScrapeMetric({
     event: "apify_ebay_sold",
     outcome: "apify_run_success",
@@ -633,11 +625,25 @@ export async function runEbaySoldListingsActor(input: RunEbaySoldListingsInput):
     listingCount: soldListings.length,
   });
 
+  if (input.pricingCardContext) {
+    return buildScrapedCardSnapshotFromSoldListings({
+      normalizedCardIdentifier: input.normalizedCardIdentifier,
+      displayName: input.keyword,
+      listings: soldListings,
+      context: input.pricingCardContext,
+    });
+  }
+
+  const top5 = [...soldListings].sort((a, b) => b.soldAt.getTime() - a.soldAt.getTime()).slice(0, 5);
+  const prices = top5.map((l) => l.soldPrice);
+  const minPrice = Math.min(...prices);
+  const maxPrice = Math.max(...prices);
+  const medianPrice = computeMedian(prices);
   return {
     normalizedCardIdentifier: input.normalizedCardIdentifier,
     displayName: input.keyword,
-    soldListings,
-    averagePrice: average.displayedAveragePrice ?? 0,
+    soldListings: top5,
+    averagePrice: Math.round(medianPrice * 100) / 100,
     medianPrice: Math.round(medianPrice * 100) / 100,
     minPrice: Math.round(minPrice * 100) / 100,
     maxPrice: Math.round(maxPrice * 100) / 100,

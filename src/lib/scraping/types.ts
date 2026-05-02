@@ -18,16 +18,27 @@ export type ScrapedSoldListing = {
 /** Candidate row from Apify before / after HTML trust checks  -  used by sold-listing filters. */
 export type SoldListingCandidate = ScrapedSoldListing;
 
+/** Card identity for sold-comp scoring / selection (not persisted on each listing row). */
+export type SoldCompCardContext = {
+  name: string;
+  setName: string | null;
+  cardNumber: string | null;
+  conditionBucket: ConditionBucket;
+};
+
 export type ScrapedCardSnapshot = {
   normalizedCardIdentifier: string;
   displayName?: string | null;
-  /** Up to 5 most recent valid (trustworthy) sold listings from the scrape. */
+  /** Up to 5 selected sold comps (ranked for relevance, not raw recency). */
   soldListings: ScrapedSoldListing[];
+  /** Primary displayed estimate: median of selected comps. */
   averagePrice: number;
   medianPrice: number;
   minPrice: number;
   maxPrice: number;
   scrapedAt: Date;
+  /** When exactly five comps were selected: trimmed mean (drops min & max) for internal / analytics only. */
+  trimmedMeanPrice?: number;
 };
 
 export type ScrapingProvider = {
@@ -38,6 +49,8 @@ export type ScrapingProvider = {
     /** For Apify metrics / dedupe logging only. */
     cacheKey?: string;
     listingMappingMode?: SoldListingMappingMode;
+    /** When set, Apify snapshot applies scored comp selection + median headline. */
+    pricingCardContext?: SoldCompCardContext;
   }): Promise<ScrapedCardSnapshot>;
 };
 

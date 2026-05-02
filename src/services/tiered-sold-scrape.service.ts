@@ -14,7 +14,7 @@ import { isSoldCacheFresh } from "@/lib/sold-cache/cache-fresh";
 import { prisma } from "@/lib/db";
 import { scrapeCardMarketData } from "@/services/scraper/scraper";
 import type { ScrapedCardSnapshot, ScrapedSoldListing } from "@/lib/scraping/types";
-import { computeDisplayedAveragePrice } from "@/lib/pricing/compute-displayed-average-price";
+import { buildScrapedCardSnapshotFromSoldListings } from "@/lib/pricing/sold-comp-selection";
 
 /** `CardCache.conditionBucket` for the shared broad raw row (semantic condition lives in `cacheKey` only). */
 const BROAD_RAW_CACHE_CONDITION_PLACEHOLDER = "raw_nm" as const;
@@ -23,59 +23,16 @@ function storeRawPayload(): boolean {
   return process.env.SCRAPING_STORE_RAW_PAYLOAD === "true";
 }
 
-function computeMedian(prices: number[]): number {
-  if (prices.length === 0) return 0;
-  const s = [...prices].sort((a, b) => a - b);
-  const mid = Math.floor(s.length / 2);
-  return s.length % 2 === 0 ? (s[mid - 1]! + s[mid]!) / 2 : s[mid]!;
-}
-
-function snapshotFromListings(
-  soldListings: ScrapedSoldListing[],
-  normalizedCardIdentifier: string,
-  displayName: string,
-): ScrapedCardSnapshot {
-  if (soldListings.length === 0) {
-    return {
-      normalizedCardIdentifier,
-      displayName,
-      soldListings: [],
-      averagePrice: 0,
-      medianPrice: 0,
-      minPrice: 0,
-      maxPrice: 0,
-      scrapedAt: new Date(),
-    };
-  }
-  const prices = soldListings.map((l) => l.soldPrice);
-  const minPrice = Math.min(...prices);
-  const maxPrice = Math.max(...prices);
-  const average = computeDisplayedAveragePrice(prices);
-  const medianPrice = computeMedian(prices);
-  return {
-    normalizedCardIdentifier,
-    displayName,
-    soldListings,
-    averagePrice: average.displayedAveragePrice ?? 0,
-    medianPrice: Math.round(medianPrice * 100) / 100,
-    minPrice: Math.round(minPrice * 100) / 100,
-    maxPrice: Math.round(maxPrice * 100) / 100,
-    scrapedAt: new Date(),
-  };
-}
-
 const USABLE_COMPS_BEFORE_FALLBACK = 3;
-const MAX_COMPS_RETURNED = 5;
 
-function mergeBroadAndNarrowThenFilter(
+function mergeBucketMatchesSorted(
   broadMatches: ScrapedSoldListing[],
   narrowPool: ScrapedSoldListing[],
   conditionBucket: ConditionBucket,
 ): ScrapedSoldListing[] {
-  const merged = mergeDedupeSoldListings(broadMatches, narrowPool, 200)
+  return mergeDedupeSoldListings(broadMatches, narrowPool, 200)
     .filter((l) => soldListingTitleMatchesBucket(l.title, conditionBucket, l.conditionLabel ?? null))
     .sort((a, b) => b.soldAt.getTime() - a.soldAt.getTime());
-  return merged.slice(0, MAX_COMPS_RETURNED);
 }
 
 async function loadScrapedListingsFromCardCacheRow(cardCacheId: string): Promise<ScrapedSoldListing[]> {
@@ -129,9 +86,10 @@ async function upsertSoldCardCacheTx(
     const prices = listings.map((l) => l.soldPrice);
     minPrice = Math.min(...prices);
     maxPrice = Math.max(...prices);
-    const average = computeDisplayedAveragePrice(prices);
-    avgPrice = average.displayedAveragePrice ?? 0;
-    medianPrice = computeMedian(prices);
+    const sorted = [...prices].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    medianPrice = sorted.length % 2 === 0 ? (sorted[mid - 1]! + sorted[mid]!) / 2 : sorted[mid]!;
+    avgPrice = medianPrice;
   }
 
   const c = await tx.cardCache.upsert({
@@ -265,7 +223,7 @@ export async function scrapeTieredRawSoldSnapshot(input: {
   );
 
   const displayEbayKeyword = broadKeyword;
-  let mergedListings = [...bucketMatches].sort((a, b) => b.soldAt.getTime() - a.soldAt.getTime()).slice(0, MAX_COMPS_RETURNED);
+  let mergedListings = mergeBucketMatchesSorted(bucketMatches, [], conditionBucket);
 
   if (bucketMatches.length < USABLE_COMPS_BEFORE_FALLBACK && collector) {
     const loadFreshFallbackListingsOrMiss = async (fallbackCacheKey: string): Promise<ScrapedSoldListing[] | "miss"> => {
@@ -318,7 +276,7 @@ export async function scrapeTieredRawSoldSnapshot(input: {
         const narrowKw = queries[i]!;
         const fallbackKey = buildSoldConditionFallbackRawCacheKey(card.normalizedCardKey, conditionBucket, i);
         await runOneFallbackQuery(narrowKw, fallbackKey);
-        mergedListings = mergeBroadAndNarrowThenFilter(bucketMatches, narrowAccum, conditionBucket);
+        mergedListings = mergeBucketMatchesSorted(bucketMatches, narrowAccum, conditionBucket);
         if (mergedListings.length >= USABLE_COMPS_BEFORE_FALLBACK) break;
       }
     } else {
@@ -331,11 +289,21 @@ export async function scrapeTieredRawSoldSnapshot(input: {
       if (narrowKw) {
         const fallbackKey = buildSoldConditionFallbackRawCacheKey(card.normalizedCardKey, conditionBucket);
         await runOneFallbackQuery(narrowKw, fallbackKey);
-        mergedListings = mergeBroadAndNarrowThenFilter(bucketMatches, narrowAccum, conditionBucket);
+        mergedListings = mergeBucketMatchesSorted(bucketMatches, narrowAccum, conditionBucket);
       }
     }
   }
 
-  const merged = snapshotFromListings(mergedListings, card.normalizedCardKey, displayEbayKeyword);
+  const merged = buildScrapedCardSnapshotFromSoldListings({
+    normalizedCardIdentifier: card.normalizedCardKey,
+    displayName: displayEbayKeyword,
+    listings: mergedListings,
+    context: {
+      name: card.name,
+      setName: card.setName,
+      cardNumber: card.cardNumber,
+      conditionBucket,
+    },
+  });
   return { merged, ebaySearchKeyword: displayEbayKeyword };
 }

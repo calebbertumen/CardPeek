@@ -116,7 +116,7 @@ export function PricingSummary({ data, tier }: Props) {
                     {formatUsdSpan(typicalLow, typicalHigh)}
                   </p>
                   <p className="mt-1.5 text-[10px] leading-snug text-muted-foreground">
-                    {isCollector ? "Based on recent sales" : "Snapshot range (upgrade to verify comps)"}
+                    {isCollector ? "Based on selected recent sales" : "Snapshot range (upgrade to verify comps)"}
                   </p>
                 </div>
                 <div className="rounded-lg border border-border/50 bg-card/50 p-3.5">
@@ -214,17 +214,15 @@ export function PricingSummary({ data, tier }: Props) {
                 <p className="text-[10px] text-muted-foreground">Sample</p>
                 <p className="mt-0.5 text-sm font-medium text-foreground/80">
                   {isCollector
-                    ? `Based on ${data.usableCompCount} matching sale${data.usableCompCount === 1 ? "" : "s"}`
+                    ? soldSampleStrengthLabel(data.soldSampleStrength)
                     : `${data.listingsCount} sale${data.listingsCount === 1 ? "" : "s"}`}
                 </p>
-                {isCollector && data.listingsCount > 0 ? (
-                  <p className="mt-0.5 text-[10px] text-muted-foreground">
-                    {soldSampleStrengthLabel(data.soldSampleStrength)}
-                  </p>
-                ) : null}
               </div>
             </div>
 
+            {data.moderateSampleNote && !data.limitedSampleNote ? (
+              <p className="text-[10px] leading-snug text-muted-foreground">{data.moderateSampleNote}</p>
+            ) : null}
             {data.limitedSampleNote ? (
               <p className="text-[10px] leading-snug text-muted-foreground">{data.limitedSampleNote}</p>
             ) : null}
@@ -245,7 +243,7 @@ export function PricingSummary({ data, tier }: Props) {
               <summary className="cursor-pointer list-none px-3 py-2.5 text-[11px] text-muted-foreground outline-none transition-colors hover:text-foreground sm:px-3.5 [&::-webkit-details-marker]:hidden">
                 <span className="font-medium text-foreground/90">
                   Based on{" "}
-                  {isCollector ? data.usableCompCount : data.listingsCount} recent sold listing
+                  {isCollector ? data.usableCompCount : data.listingsCount} selected recent sale
                   {(isCollector ? data.usableCompCount : data.listingsCount) === 1 ? "" : "s"}
                 </span>
                 <span className="ml-1.5 text-muted-foreground underline decoration-dotted underline-offset-2 group-open:hidden">

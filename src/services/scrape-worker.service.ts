@@ -170,6 +170,12 @@ export async function processPendingScrapeJobs(input?: { limit?: number }): Prom
               queryText: kw,
               conditionBucket: next.conditionBucket as ConditionBucket,
               cacheKey: next.cacheKey,
+              pricingCardContext: {
+                name: card.name,
+                setName: card.setName,
+                cardNumber: card.cardNumber,
+                conditionBucket: next.conditionBucket as ConditionBucket,
+              },
             });
             return { scraped: snap, keyword: kw };
           })();

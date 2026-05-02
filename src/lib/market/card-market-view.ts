@@ -13,8 +13,9 @@ export type CardMarketView = {
     normalizedCardKey: string;
   };
   conditionBucket: ConditionBucket;
+  /** Primary headline estimate (median of selected comps). */
   avgPrice: number;
-  /** When present, indicates the average excluded outlier sale prices. */
+  /** Legacy field; median-based snapshots do not populate excluded means. */
   avgExcludedPrices?: number[] | null;
   medianPrice: number;
   lowPrice: number;
@@ -25,6 +26,8 @@ export type CardMarketView = {
   soldSampleStrength: SoldSampleStrength;
   /** When the matching-sales sample is very thin. */
   limitedSampleNote?: string | null;
+  /** When 3–4 comps are available (moderate sample). */
+  moderateSampleNote?: string | null;
   lastUpdated: Date;
   isStale: boolean;
   /**

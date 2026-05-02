@@ -11,6 +11,7 @@ export const apifyScrapingProvider: ScrapingProvider = {
     cacheKey,
     conditionBucket,
     listingMappingMode,
+    pricingCardContext,
   }): Promise<ScrapedCardSnapshot> {
     return runEbaySoldListingsActor({
       keyword: queryText,
@@ -18,6 +19,7 @@ export const apifyScrapingProvider: ScrapingProvider = {
       cacheKey,
       conditionBucket,
       listingMappingMode,
+      pricingCardContext,
     });
   },
 };

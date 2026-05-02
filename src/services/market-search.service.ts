@@ -8,10 +8,6 @@ import { queueScrapeRefreshIfNeeded } from "@/services/scrape-queue.service";
 import { logSoldScrapeMetric } from "@/services/apify/scrape-metrics";
 import { waitForFreshSoldCache } from "@/services/sold-cache-wait.service";
 import { cleanupStaleSoldScrapeJobs, processPendingScrapeJobs } from "@/services/scrape-worker.service";
-import {
-  averageExcludesSomeListings,
-  computeDisplayedAveragePrice,
-} from "@/lib/pricing/compute-displayed-average-price";
 import { buildMarketSnapshotInsights, type MarketSnapshotInsights } from "@/lib/pricing/market-snapshot-insights";
 import {
   getFreshScrapeEntitlementForUser,
@@ -52,6 +48,7 @@ export type MarketSearchResult =
         usableCompCount: number;
         soldSampleStrength: SoldSampleStrength;
         limitedSampleNote?: string | null;
+        moderateSampleNote?: string | null;
         lastUpdated: Date;
         isStale: boolean;
         /** True while cache is stale and a sold scrape is queued or in-flight (drives polling / worker kick). */
@@ -516,11 +513,7 @@ export async function searchCardMarketData(input: {
         }))
       : [];
 
-  const pricing = computeDisplayedAveragePrice(listingPrices.map((l) => l.soldPrice));
-  const avgExcludedPrices =
-    averageExcludesSomeListings(pricing.pricingMethod) && pricing.excludedPrices.length > 0
-      ? pricing.excludedPrices
-      : null;
+  const avgExcludedPrices = null;
 
   const snapshotInsights =
     listingPrices.length > 0
@@ -543,6 +536,8 @@ export async function searchCardMarketData(input: {
     usableCompCount >= 1 && usableCompCount <= 2
       ? "Limited matching sales found. Estimate may be less reliable."
       : null;
+  const moderateSampleNote =
+    usableCompCount >= 3 && usableCompCount <= 4 ? `Based on ${usableCompCount} matching sales.` : null;
 
   return {
     kind: "ok",
@@ -566,6 +561,7 @@ export async function searchCardMarketData(input: {
       usableCompCount,
       soldSampleStrength,
       limitedSampleNote,
+      moderateSampleNote,
       lastUpdated: existing.lastScrapedAt,
       isStale: isStaleFinal,
       isRefreshing: isRefreshingFinal,
