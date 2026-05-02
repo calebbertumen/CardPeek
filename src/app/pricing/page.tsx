@@ -98,7 +98,7 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="space-y-1.5">
                 <CardTitle className="text-xl">Starter (Free)</CardTitle>
-                <CardDescription>Quick pricing from a saved snapshot of recent sales.</CardDescription>
+                <CardDescription>Quick pricing from selected recent sales.</CardDescription>
               </div>
               {starterIsCurrent ? (
                 <Badge variant="default" className="shrink-0">
@@ -112,7 +112,7 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>• Unlimited searches on saved sold snapshots</li>
               <li>• Includes up to 3 fresh data updates when available</li>
-              <li>• Estimate based on recent sold listings</li>
+              <li>• Estimate based on selected recent sales</li>
               <li>• Typical range from cleaned recent sales</li>
               <li>• Sold listings hidden (preview only)</li>
               <li>• Track up to 10 cards using Near Mint pricing</li>
@@ -134,6 +134,9 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
               <div className="space-y-1.5">
                 <CardTitle className="text-xl">Collector</CardTitle>
                 <CardDescription>See the sales behind the estimate, with condition filters and full sold listings.</CardDescription>
+                <p className="text-xs leading-snug text-muted-foreground">
+                  Sales are selected based on relevance and condition.
+                </p>
               </div>
               {collectorIsCurrent ? (
                 <Badge variant="default" className="shrink-0">
@@ -151,7 +154,7 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Cancel anytime. No commitment.</p>
             </div>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>• See up to 5 recent sales per card (price, date, title)</li>
+              <li>• See up to 5 selected recent sales per card (price, date, title)</li>
               <li>• Compare prices across different conditions</li>
               <li>• Filter by condition during search</li>
               <li>• Access fresher sales data when available</li>

@@ -11,7 +11,7 @@ export default function PrivacyPage() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-14 sm:px-6">
       <h1 className="text-3xl font-semibold tracking-tight">Privacy Policy</h1>
-      <p className="mt-2 text-sm text-muted-foreground">Effective Date: April 21, 2026</p>
+      <p className="mt-2 text-sm text-muted-foreground">Effective Date: May 1, 2026</p>
 
       <div className="mt-8 space-y-8 text-sm leading-relaxed text-muted-foreground">
         <section className="space-y-3">
@@ -47,8 +47,9 @@ export default function PrivacyPage() {
           </p>
           <p>
             All payments are processed securely through Stripe. We do not store or have access to full payment details
-            such as credit card numbers. We may store:
+            such as credit card numbers.
           </p>
+          <p>We may store:</p>
           <ul className="list-inside list-disc space-y-2 pl-1">
             <li>Stripe customer ID</li>
             <li>Subscription status</li>
@@ -58,20 +59,25 @@ export default function PrivacyPage() {
             <strong className="text-foreground">d. Market Data, Pricing Insights, and External Data Sources</strong>
           </p>
           <p>
-            CardPeek retrieves and processes publicly available marketplace data (e.g., eBay sold listings). This data
-            is used to generate pricing insights, including but not limited to:
+            CardPeek retrieves and processes publicly available marketplace data, such as eBay sold listings. This data
+            is used to generate pricing insights, including:
           </p>
           <ul className="list-inside list-disc space-y-2 pl-1">
-            <li>Estimated market values</li>
+            <li>Estimated values</li>
             <li>Typical price ranges</li>
-            <li>Lower-end and higher-end observed price points</li>
-            <li>Summary statistics (e.g., median, high, low, sample size)</li>
+            <li>Observed lower and higher price points</li>
+            <li>Summary statistics (e.g., median, sample size)</li>
           </ul>
           <p>
             <strong className="text-foreground">Important notes about this data:</strong>
           </p>
           <ul className="list-inside list-disc space-y-2 pl-1">
-            <li>Data is aggregated, transformed, and interpreted using internal algorithms</li>
+            <li>Data is aggregated, filtered, and interpreted using internal selection logic</li>
+            <li>
+              Listings may be ranked or selected based on factors such as condition match, listing quality, and
+              relevance
+            </li>
+            <li>Not all available listings are shown or used in calculations</li>
             <li>Data may be cached and reused across users for performance optimization</li>
             <li>Pricing insights are not real-time and may be delayed</li>
             <li>
@@ -89,6 +95,7 @@ export default function PrivacyPage() {
             <li>Enable collection features (saving, organizing, and displaying your card collection)</li>
             <li>Calculate and display collection value using cached and processed pricing data</li>
             <li>Generate pricing insights and market summaries</li>
+            <li>Select and display relevant recent sales used in pricing estimates</li>
             <li>Process subscriptions and manage billing</li>
             <li>Send transactional notifications (e.g., billing updates)</li>
             <li>Improve app functionality, performance, and user experience</li>
@@ -103,9 +110,12 @@ export default function PrivacyPage() {
           <p>These insights:</p>
           <ul className="list-inside list-disc space-y-2 pl-1">
             <li>Are based on recent sold listing data and internal calculations</li>
+            <li>May use selected or filtered listings rather than all available listings</li>
             <li>May vary significantly due to condition, timing, market demand, and data variability</li>
-            <li>Should not be relied upon as financial, investment, or professional advice</li>
+            <li>May differ from prices observed on marketplaces at any given time</li>
           </ul>
+          <p>CardPeek does not guarantee pricing accuracy.</p>
+          <p>These insights should not be relied upon as financial, investment, or professional advice.</p>
           <p>
             Users are responsible for performing their own due diligence before making buying or selling decisions.
           </p>
@@ -193,11 +203,12 @@ export default function PrivacyPage() {
         <section className="space-y-3">
           <h2 className="text-lg font-semibold text-foreground">8. Data Storage and Security</h2>
           <p>
-            We implement reasonable administrative, technical, and organizational safeguards to protect your information.
-            However:
+            We implement reasonable administrative, technical, and organizational safeguards to protect your
+            information.
           </p>
+          <p>However:</p>
           <ul className="list-inside list-disc space-y-2 pl-1">
-            <li>No system is 100% secure</li>
+            <li>No system is 100 percent secure</li>
             <li>We cannot guarantee absolute security</li>
           </ul>
         </section>
@@ -208,7 +219,7 @@ export default function PrivacyPage() {
           <ul className="list-inside list-disc space-y-2 pl-1">
             <li>Provide our services</li>
             <li>Maintain system performance (e.g., cached pricing data)</li>
-            <li>Improve pricing models and aggregation accuracy</li>
+            <li>Improve pricing models and selection logic</li>
             <li>Comply with legal obligations</li>
             <li>Resolve disputes and enforce agreements</li>
           </ul>
@@ -255,7 +266,8 @@ export default function PrivacyPage() {
             <li>Hosting providers</li>
             <li>Analytics tools (if applicable)</li>
           </ul>
-          <p>These services have their own privacy policies. We encourage you to review them.</p>
+          <p>These services have their own privacy policies.</p>
+          <p>We encourage you to review them.</p>
         </section>
 
         <section className="space-y-3">

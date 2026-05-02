@@ -11,7 +11,7 @@ export default function TermsPage() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-14 sm:px-6">
       <h1 className="text-3xl font-semibold tracking-tight">Terms of Service</h1>
-      <p className="mt-2 text-sm text-muted-foreground">Effective Date: April 21, 2026</p>
+      <p className="mt-2 text-sm text-muted-foreground">Effective Date: May 1, 2026</p>
 
       <div className="mt-8 space-y-8 text-sm leading-relaxed text-muted-foreground">
         <section className="space-y-3">
@@ -29,7 +29,7 @@ export default function TermsPage() {
           <ul className="list-inside list-disc space-y-2 pl-1">
             <li>Search for trading card pricing data</li>
             <li>View recent marketplace sales data</li>
-            <li>Access aggregated pricing insights and market summaries</li>
+            <li>Access aggregated pricing insights and summaries</li>
             <li>Build and track a personal collection of trading cards</li>
           </ul>
 
@@ -38,21 +38,31 @@ export default function TermsPage() {
               <strong className="text-foreground">Pricing Insights &amp; Market Data</strong>
             </p>
             <p>
-              CardPeek processes publicly available marketplace data (e.g., eBay sold listings) to generate pricing
-              insights, which may include:
+              CardPeek retrieves and processes publicly available marketplace data (such as eBay sold listings) to
+              generate pricing insights.
             </p>
+            <p>These insights may include:</p>
             <ul className="list-inside list-disc space-y-2 pl-1">
-              <li>Estimated market values</li>
+              <li>Estimated values</li>
               <li>Typical price ranges</li>
-              <li>Lower-end and higher-end observed price points</li>
+              <li>Observed lower and higher price points</li>
               <li>Summary statistics (e.g., median, low, high, sample size)</li>
             </ul>
             <p>These insights are:</p>
             <ul className="list-inside list-disc space-y-2 pl-1">
-              <li>Generated using internal algorithms and data processing methods</li>
+              <li>Generated using internal data processing and selection methods</li>
               <li>Based on historical sold listings, not active listings</li>
               <li>Not real-time and may be delayed</li>
-              <li>Subject to variability due to condition, timing, listing quality, and market demand</li>
+              <li>Derived from a subset of available listings, not all listings</li>
+              <li>Influenced by condition, listing quality, relevance, and other factors</li>
+            </ul>
+            <p>CardPeek may:</p>
+            <ul className="list-inside list-disc space-y-2 pl-1">
+              <li>
+                Filter, rank, or select listings based on condition match, listing quality, and relevance
+              </li>
+              <li>Exclude listings that are incomplete, inconsistent, or not representative</li>
+              <li>Use cached data across users for performance optimization</li>
             </ul>
           </div>
 
@@ -65,14 +75,14 @@ export default function TermsPage() {
               <li>All pricing information is for informational purposes only</li>
               <li>Data may be incomplete, inaccurate, or outdated</li>
               <li>CardPeek does not guarantee pricing accuracy or market outcomes</li>
+              <li>Estimates may differ from actual sale prices or marketplace listings</li>
               <li>
-                CardPeek is an independent tool and is not affiliated with, endorsed by, or sponsored by any marketplace
-                (including eBay)
-              </li>
-              <li>
-                Users are responsible for independently verifying information before making buying or selling decisions
+                CardPeek is not affiliated with, endorsed by, or sponsored by any marketplace (including eBay)
               </li>
             </ul>
+            <p>
+              Users are responsible for independently verifying information before making buying or selling decisions.
+            </p>
           </div>
 
           <div className="space-y-3">
@@ -82,15 +92,21 @@ export default function TermsPage() {
             <p>CardPeek allows users to save and organize cards into a personal collection.</p>
             <ul className="list-inside list-disc space-y-2 pl-1">
               <li>Users may add cards identified by card identity, condition, and quantity</li>
-              <li>Collection values are calculated using cached and processed marketplace data</li>
-              <li>Pricing displayed in collections may not reflect real-time market conditions</li>
-              <li>Free-tier users may experience limited or delayed pricing updates</li>
-              <li>Paid users may receive refreshed pricing based on system rules</li>
-              <li>Collections are private and not shared publicly</li>
-              <li>
-                We reserve the right to modify how collection values are calculated or displayed at any time.
-              </li>
+              <li>Collection values are calculated using cached and processed pricing data</li>
+              <li>Pricing displayed in collections may not reflect current market conditions</li>
             </ul>
+            <p>
+              <strong className="text-foreground">Important notes:</strong>
+            </p>
+            <ul className="list-inside list-disc space-y-2 pl-1">
+              <li>Free-tier users may experience delayed or limited pricing updates</li>
+              <li>Paid users may receive refreshed pricing based on system rules</li>
+              <li>Collection pricing uses the same estimation logic as search results</li>
+              <li>Collections are private and not shared publicly</li>
+            </ul>
+            <p>
+              We reserve the right to modify how collection values are calculated or displayed at any time.
+            </p>
           </div>
         </section>
 
@@ -108,14 +124,15 @@ export default function TermsPage() {
 
         <section className="space-y-4">
           <h2 className="text-lg font-semibold text-foreground">4. Subscriptions, Billing, and Refunds</h2>
-          <p>Certain features require a paid subscription. All payments are processed securely through Stripe.</p>
+          <p>Certain features require a paid subscription.</p>
+          <p>All payments are processed securely through Stripe.</p>
 
           <div className="space-y-3 pt-1">
             <p>
               <strong className="text-foreground">a. Billing and Auto-Renewal</strong>
             </p>
             <ul className="list-inside list-disc space-y-2 pl-1">
-              <li>Subscriptions are billed in advance on a recurring basis (e.g., monthly)</li>
+              <li>Subscriptions are billed in advance on a recurring basis</li>
               <li>Subscriptions automatically renew unless canceled before the next billing date</li>
               <li>By subscribing, you authorize us to charge your payment method via Stripe</li>
             </ul>
@@ -158,7 +175,7 @@ export default function TermsPage() {
             <p>We reserve the right to deny refunds in cases of:</p>
             <ul className="list-inside list-disc space-y-2 pl-1">
               <li>Abuse of the refund system</li>
-              <li>Attempts to circumvent limitations</li>
+              <li>Attempts to circumvent feature limitations</li>
               <li>Violations of these Terms</li>
             </ul>
             <p>Refunds may also be issued where required by law or in cases of verified billing errors.</p>
@@ -211,10 +228,11 @@ export default function TermsPage() {
             <li>Timeliness</li>
             <li>That all relevant listings are captured</li>
           </ul>
-          <p>All pricing insights, including estimated values, ranges, and summary metrics:</p>
+          <p>All pricing insights:</p>
           <ul className="list-inside list-disc space-y-2 pl-1">
-            <li>Are derived estimates, not definitive valuations</li>
-            <li>May vary significantly due to condition, timing, and market demand</li>
+            <li>Are derived estimates based on selected and processed data</li>
+            <li>May vary significantly due to condition, timing, listing quality, and market demand</li>
+            <li>May be based on a limited sample of listings</li>
             <li>Should not be relied upon as financial or investment advice</li>
           </ul>
         </section>
@@ -223,9 +241,10 @@ export default function TermsPage() {
           <h2 className="text-lg font-semibold text-foreground">7. Platform Changes and Data Processing</h2>
           <p>CardPeek may:</p>
           <ul className="list-inside list-disc space-y-2 pl-1">
-            <li>Modify how pricing insights are calculated, displayed, or interpreted</li>
+            <li>Modify how pricing insights are calculated, selected, or displayed</li>
             <li>Change data sources or processing methods</li>
-            <li>Cache and reuse data across users for performance optimization</li>
+            <li>Adjust selection logic, filtering rules, or condition matching</li>
+            <li>Cache and reuse data across users</li>
           </ul>
           <p>We do not guarantee consistency of outputs over time.</p>
         </section>
